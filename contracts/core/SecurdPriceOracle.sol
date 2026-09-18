@@ -30,9 +30,17 @@ interface ICErc20Underlying {
     function underlying() external view returns (address);
 }
 
+interface IERC20Decimals {
+    function decimals() external view returns (uint8);
+}
+
 /// @title SecurdPriceOracle
 /// @notice Oracle adapter that supports per-asset Chainlink, Band, or fallback bot pricing.
-/// @dev Returns prices with 1e18 mantissa. A zero return value means no valid price is currently available.
+/// @dev getUnderlyingPrice (the function Comptroller actually consumes) returns prices scaled to
+///      10^(36 - underlyingDecimals), matching the raw-balance math in Comptroller's liquidity/liquidation
+///      calculations -- see getUnderlyingPrice's own NatSpec for why. previewPrices, by contrast, returns
+///      flat 1e18-precision values for off-chain inspection/debugging -- see its NatSpec. A zero return
+///      value from either means no valid price is currently available.
 /// @dev The external interface matches the core `PriceOracle` abstraction used by the comptroller.
 contract SecurdPriceOracle is Ownable, PriceOracle {
     enum OracleType {
@@ -242,28 +250,30 @@ contract SecurdPriceOracle is Ownable, PriceOracle {
     }
 
     /// @notice Returns the currently selected underlying price for a cToken market.
+    /// @dev Comptroller's liquidity/liquidation math (getHypotheticalAccountLiquidityInternal,
+    ///      liquidateCalculateSeizeTokens) multiplies this price directly against RAW cToken/underlying
+    ///      balances with no separate decimals normalization of its own -- this is the classic Compound V2
+    ///      contract, which requires the oracle to return price scaled by 10^(36 - underlyingDecimals), not
+    ///      a flat 1e18-per-whole-token value. Each _read* helper below returns a flat $-per-whole-token
+    ///      price at 1e18 precision (Chainlink/Band's own native convention); _scaleToUnderlyingDecimals
+    ///      applies the remaining 10^(18 - underlyingDecimals) factor. Without it, every market whose
+    ///      underlying isn't 18 decimals is mispriced (e.g. a 6-decimal asset is undervalued by exactly
+    ///      10^12x -- verified empirically before this fix).
     /// @param cToken Market whose underlying asset price is requested.
-    /// @return Price scaled to 1e18, or zero if unavailable.
+    /// @return Price scaled to 10^(36 - underlyingDecimals), or zero if unavailable.
     function getUnderlyingPrice(CToken cToken) external view override returns (uint256) {
         address asset = _getUnderlyingAddress(address(cToken));
-        AssetConfig storage cfg = assetConfig[asset];
-
-        if (cfg.oracleType == OracleType.CHAINLINK) {
-            return _readChainlink(cfg);
-        }
-
-        if (cfg.oracleType == OracleType.BAND) {
-            return _readBand(cfg);
-        }
-
-        if (cfg.oracleType == OracleType.FALLBACK) {
-            return _readFallback(asset, cfg);
-        }
-
-        return 0;
+        return _scaleToUnderlyingDecimals(asset, _readFlatPrice(asset));
     }
 
     /// @notice Returns all price-source readings for inspection and debugging.
+    /// @dev Deliberately NOT decimals-scaled, unlike getUnderlyingPrice -- these are the flat
+    ///      $-per-whole-token values as each source natively reports them (Chainlink/Band's own
+    ///      convention). This is intentional, not an inconsistency: off-chain consumers (e.g. the LP
+    ///      oracle bot in scripts/runXrplLpOracleBot.ts) read component-asset prices from this function
+    ///      to compute a pool's dollar value in flat terms, and a Compound-scaled value here would corrupt
+    ///      that math for any non-18-decimal component asset. getUnderlyingPrice is the only function
+    ///      that applies the underlying-decimals scaling, because it's the only one Comptroller consumes.
     /// @param asset Asset whose configured price sources are queried.
     function previewPrices(address asset)
         external
@@ -290,6 +300,51 @@ contract SecurdPriceOracle is Ownable, PriceOracle {
         } else if (oracleType == OracleType.FALLBACK) {
             selectedPriceMantissa = fallbackPriceMantissa;
         }
+    }
+
+    function _readFlatPrice(address asset) internal view returns (uint256) {
+        AssetConfig storage cfg = assetConfig[asset];
+
+        if (cfg.oracleType == OracleType.CHAINLINK) {
+            return _readChainlink(cfg);
+        }
+
+        if (cfg.oracleType == OracleType.BAND) {
+            return _readBand(cfg);
+        }
+
+        if (cfg.oracleType == OracleType.FALLBACK) {
+            return _readFallback(asset, cfg);
+        }
+
+        return 0;
+    }
+
+    /// @dev Scales a flat $-per-whole-token, 1e18-precision price up/down by the underlying asset's own
+    ///      decimals so the result matches what Comptroller's raw-balance math requires (see
+    ///      getUnderlyingPrice's NatSpec). Fails safe to 0 (treated as "no valid price" throughout this
+    ///      contract) if the asset's decimals() cannot be read, mirroring every other failure path here.
+    function _scaleToUnderlyingDecimals(address asset, uint256 flatPriceMantissa) internal view returns (uint256) {
+        if (flatPriceMantissa == 0) return 0;
+        // A call to an address with no contract code returns success with empty data at the EVM level
+        // rather than reverting, and decoding empty data into a uint8 return value is not something
+        // try/catch's bare `catch` clause traps -- it propagates as an uncaught panic. Guard explicitly
+        // so a misconfigured (non-contract) asset fails safe to 0 like every other path in this contract,
+        // instead of reverting the whole read.
+        if (asset.code.length == 0) return 0;
+
+        uint8 underlyingDecimals;
+        try IERC20Decimals(asset).decimals() returns (uint8 d) {
+            underlyingDecimals = d;
+        } catch {
+            return 0;
+        }
+
+        if (underlyingDecimals == 18) return flatPriceMantissa;
+        // Guard against pathological >36-decimal tokens overflowing the scaling multiplication.
+        if (underlyingDecimals > 36) return 0;
+        if (underlyingDecimals < 18) return flatPriceMantissa * (10 ** (18 - underlyingDecimals));
+        return flatPriceMantissa / (10 ** (underlyingDecimals - 18));
     }
 
     function _getUnderlyingAddress(address cToken) internal view returns (address) {

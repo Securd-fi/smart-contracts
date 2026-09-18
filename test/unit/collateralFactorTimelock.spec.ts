@@ -180,4 +180,107 @@ describe("SecurdCollateralFactorTimelock", function () {
       "Ownable: caller is not the owner"
     );
   });
+
+  it("transfers ownership when the initial owner differs from the deployer", async function () {
+    const [deployer, owner] = await ethers.getSigners();
+    const timelock = await (await ethers.getContractFactory("SecurdCollateralFactorTimelock"))
+      .connect(deployer)
+      .deploy(owner.address);
+    expect(await timelock.owner()).to.equal(owner.address);
+  });
+
+  it("rejects a zero owner at construction", async function () {
+    const Timelock = await ethers.getContractFactory("SecurdCollateralFactorTimelock");
+    await expect(Timelock.deploy(ethers.ZeroAddress)).to.be.revertedWith("owner=0");
+  });
+
+  it("rejects acceptUnitrollerAdmin with the zero address", async function () {
+    const { timelock } = await deployFixture();
+    await expect(timelock.acceptUnitrollerAdmin(ethers.ZeroAddress)).to.be.revertedWithCustomError(
+      timelock,
+      "InvalidTarget"
+    );
+  });
+
+  it("reverts acceptUnitrollerAdmin when the underlying _acceptAdmin call fails", async function () {
+    const { timelock, mock } = await deployFixture();
+    await mock._setPendingAdmin(await timelock.getAddress());
+    await mock.setNextErrorCode(7);
+
+    await expect(timelock.acceptUnitrollerAdmin(await mock.getAddress())).to.be.revertedWith(
+      "acceptAdmin failed"
+    );
+  });
+
+  it("rejects queue with the zero target", async function () {
+    const { timelock } = await deployFixture();
+    await expect(timelock.queue(ethers.ZeroAddress, 0, "0x", 0)).to.be.revertedWithCustomError(
+      timelock,
+      "InvalidTarget"
+    );
+  });
+
+  it("rejects queuing the exact same action twice in the same block", async function () {
+    const { timelock, mock } = await deployFixture();
+    const data = encodeSetCollateralFactor(ethers.Wallet.createRandom().address, ethers.parseEther("0.7"));
+
+    await ethers.provider.send("evm_setAutomine", [false]);
+    try {
+      await timelock.queue(await mock.getAddress(), 0, data, MIN_DELAY);
+      await timelock.queue(await mock.getAddress(), 0, data, MIN_DELAY);
+      await ethers.provider.send("evm_mine", []);
+
+      const block = await ethers.provider.getBlock("latest");
+      // Both queue calls landed in this same block, so block.timestamp (and therefore eta and
+      // actionId) is identical for both -- the second must revert with ActionAlreadyQueued.
+      expect(block.transactions.length).to.equal(2);
+      const receipts = await Promise.all(block.transactions.map((h: string) => ethers.provider.getTransactionReceipt(h)));
+      expect(receipts[0].status).to.equal(1);
+      expect(receipts[1].status).to.equal(0);
+    } finally {
+      await ethers.provider.send("evm_setAutomine", [true]);
+    }
+  });
+
+  it("reverts execute when the target call itself fails", async function () {
+    const { timelock, mock } = await deployFixture();
+    // Unrecognized selector on a mock with no fallback -- the low-level call itself fails.
+    const badData = "0xdeadbeef";
+
+    const tx = await timelock.queue(await mock.getAddress(), 0, badData, 0);
+    const actionId = (await tx.wait()).logs.find((l: any) => l.fragment?.name === "ActionQueued").args.actionId;
+
+    await expect(timelock.execute(actionId)).to.be.revertedWithCustomError(timelock, "ExecutionFailed");
+  });
+
+  it("reverts execute when the target returns a non-zero Compound-style error code", async function () {
+    const { timelock, mock } = await deployFixture();
+    await mock.setNextErrorCode(3);
+    const data = encodeSetCollateralFactor(ethers.Wallet.createRandom().address, ethers.parseEther("0.7"));
+
+    const tx = await timelock.queue(await mock.getAddress(), 0, data, MIN_DELAY);
+    const actionId = (await tx.wait()).logs.find((l: any) => l.fragment?.name === "ActionQueued").args.actionId;
+
+    await ethers.provider.send("evm_increaseTime", [MIN_DELAY]);
+    await ethers.provider.send("evm_mine", []);
+
+    await expect(timelock.execute(actionId)).to.be.revertedWithCustomError(timelock, "ExecutionFailed");
+  });
+
+  it("executes successfully against a target that returns no data", async function () {
+    const { timelock } = await deployFixture();
+    // A call to an address with no contract code succeeds with empty (non-32-byte) return data,
+    // exercising the ret.length != 32 branch distinctly from the Compound-error-code branch.
+    const eoaTarget = ethers.Wallet.createRandom().address;
+
+    const tx = await timelock.queue(eoaTarget, 0, "0x", 0);
+    const actionId = (await tx.wait()).logs.find((l: any) => l.fragment?.name === "ActionQueued").args.actionId;
+
+    await expect(timelock.execute(actionId)).to.emit(timelock, "ActionExecuted");
+  });
+
+  it("rejects cancel for an action that was never queued", async function () {
+    const { timelock } = await deployFixture();
+    await expect(timelock.cancel(ethers.ZeroHash)).to.be.revertedWithCustomError(timelock, "ActionNotQueued");
+  });
 });

@@ -5,7 +5,9 @@ export enum ActionType {
   SUPPLY = 0,
   BORROW = 1,
   REPAY = 2,
-  WITHDRAW = 3
+  WITHDRAW = 3,
+  ENTER_MARKET = 4,
+  EXIT_MARKET = 5
 }
 
 export type IntentEnvelope = {

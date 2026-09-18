@@ -464,7 +464,6 @@ Recommended shape:
       },
       "evm": {
         "collateralAsset": "0x0000000000000000000000000000000000000001",
-        "underlyingDecimals": 18,
         "token0": "0x0000000000000000000000000000000000000010",
         "token1": "0x0000000000000000000000000000000000000020"
       },
@@ -491,22 +490,26 @@ The bot scaffold now includes:
 - reserve-jump protection between observations
 - optional webhook-based alerting
 
-## 18. Exact mantissa conversion rule
+## 18. Mantissa convention: publish flat, let the oracle scale
 
-The offchain bot should first compute the LP price as a normal decimal USD value.
-After that, it should convert the value into the oracle mantissa expected by the
-lending core.
+The offchain bot computes the LP price as a normal decimal USD value and publishes it
+as a flat `priceMantissa = floor(lpPriceUsd * 1e18)` -- the same convention Chainlink
+and Band report natively. It does **not** rescale by the LP token's own decimals before
+calling `postFallbackPrice`.
 
-For an LP collateral asset with `underlyingDecimals`, the conversion is:
+`SecurdPriceOracle.getUnderlyingPrice` is the single place that applies the
+`10^(18 - underlyingDecimals)` scaling Comptroller's raw-balance liquidity math requires
+(see the NatSpec on `getUnderlyingPrice` and `_scaleToUnderlyingDecimals` in
+[SecurdPriceOracle.sol](../contracts/core/SecurdPriceOracle.sol)), for every oracle mode
+uniformly. This used to be the bot's own responsibility (parameterized by an
+`underlyingDecimals` config field that has since been removed) -- pushing it into the
+contract instead was a deliberate fix: Chainlink and Band report standardized,
+decimals-unaware USD prices with no way for an "operator" to pre-compensate them, so the
+scaling has to live where Comptroller actually consumes the price, applied consistently
+to all three oracle modes rather than reimplemented per price-poster.
 
-`priceMantissa = floor(lpPriceUsd * 10^(36 - underlyingDecimals))`
-
-Examples:
-
-- if LP collateral uses `18` decimals, publish with `1e18` precision
-- if LP collateral uses `6` decimals, publish with `1e30` precision
-
-The bot should always round down for collateral safety.
+`previewPrices` (used by `readUnderlyingPrice` in the bot to price a pool's component
+assets) intentionally still returns flat, unscaled values -- see its NatSpec.
 
 ## 19. Publish decision algorithm
 

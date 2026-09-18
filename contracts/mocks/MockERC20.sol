@@ -7,6 +7,7 @@ contract MockERC20 is ERC20 {
     uint8 private immutable _decimals;
     address public immutable deployer;
     bool public failTransfers;
+    bool public failApprove;
 
     constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
         _decimals = decimals_;
@@ -26,6 +27,11 @@ contract MockERC20 is ERC20 {
         failTransfers = fail;
     }
 
+    function setFailApprove(bool fail) external {
+        require(msg.sender == deployer, "MockERC20: only deployer");
+        failApprove = fail;
+    }
+
     function transfer(address to, uint256 amount) public override returns (bool) {
         require(!failTransfers, "transfer failed");
         return super.transfer(to, amount);
@@ -34,5 +40,10 @@ contract MockERC20 is ERC20 {
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         require(!failTransfers, "transferFrom failed");
         return super.transferFrom(from, to, amount);
+    }
+
+    function approve(address spender, uint256 amount) public override returns (bool) {
+        require(!failApprove, "approve failed");
+        return super.approve(spender, amount);
     }
 }

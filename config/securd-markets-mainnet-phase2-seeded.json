@@ -1,0 +1,58 @@
+[
+  {
+    "_comment": "PHASE 2 -- HOLD. Not wired into SECURD_MARKETS_FILE. WETH requires >=1 WETH seeded on XRPL EVM mainnet before activation (risk doc: empty-market manipulation risk). Confirm seeding is complete, then merge this entry into the active markets file.",
+    "underlying": "0x50498dC52bCd3dAeB54B7225A7d2FA8D536F313E",
+    "cTokenName": "Securd XRPL Wrapped Ether",
+    "cTokenSymbol": "sWETH",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "750000000000000000",
+    "borrowCap": "16000000000000000000",
+    "bridgeTokenId": "0xdf27e9d024db321e54430ed2a2d5945c6955fbafb5c386a1358008a042e3fda6",
+    "listOnBridge": true,
+    "oracle": {
+      "_note": "Band has no 'WETH' symbol (query reverted); 'ETH' worked live and is the correct reference asset for wrapped ETH.",
+      "type": "BAND",
+      "bandBaseSymbol": "ETH",
+      "bandQuoteSymbol": "USD",
+      "bandMaxDelay": "3600"
+    }
+  },
+  {
+    "_comment": "PHASE 2 -- HOLD. Not wired into SECURD_MARKETS_FILE. USDT requires >=$10,000 USDT seeded before activation (risk doc: empty-market manipulation risk).",
+    "underlying": "0x9F8CF9c00fac501b3965872f4ed3271f6f4d06fF",
+    "cTokenName": "Securd XRPL Tether USD",
+    "cTokenSymbol": "sUSDT",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "780000000000000000",
+    "borrowCap": "40000000000",
+    "bridgeTokenId": "0xe492d9a67fbc2152a57ac8c08784f7d45cf13f4415a11cd0d787235c5f9219f7",
+    "listOnBridge": true,
+    "oracle": {
+      "type": "BAND",
+      "bandBaseSymbol": "USDT",
+      "bandQuoteSymbol": "USD",
+      "bandMaxDelay": "3600"
+    }
+  },
+  {
+    "_comment": "PHASE 2 -- HOLD. Not wired into SECURD_MARKETS_FILE. WBTC requires >=0.1 WBTC seeded before activation. collateralFactorMantissa deliberately 0 (not the doc's target 730000000000000000) because the doc explicitly disables WBTC as collateral until XRPL EVM DEX liquidity exceeds $50k -- raise to 730000000000000000 only once that threshold is confirmed.",
+    "underlying": "0xF8Eb4Ed0d4CF2bb707c0272F8C6827dEB6e4C0A9",
+    "cTokenName": "Securd XRPL Wrapped Bitcoin",
+    "cTokenSymbol": "sWBTC",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "0",
+    "borrowCap": "60000000",
+    "bridgeTokenId": "0x27c24fcc5d9b67e9b469901e6c4b85d9553f317dedd1f29a175e6c749bda3f23",
+    "listOnBridge": true,
+    "oracle": {
+      "_note": "Band also has a generic 'BTC' symbol (queried live, slightly different rate) -- using 'WBTC' specifically since that's the actual bridged asset this market represents.",
+      "type": "BAND",
+      "bandBaseSymbol": "WBTC",
+      "bandQuoteSymbol": "USD",
+      "bandMaxDelay": "3600"
+    }
+  }
+]

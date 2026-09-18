@@ -1,0 +1,54 @@
+{
+  "owner": "0x57eb9411CA49752994b81cd1B60c3917Cb99247C",
+  "deployer": "0xd0f3C1504e483F5E1A9A1046Fd8cD5ED733770A2",
+  "comptrollerAdmin": "0xEB27E14a7E7Dd1652FBC6220df56F28a6b1047Fb",
+  "comptrollerPendingAdmin": "0x0000000000000000000000000000000000000000",
+  "comptrollerExpectedAdmin": "0x57eb9411CA49752994b81cd1B60c3917Cb99247C",
+  "unitroller": "0xf2631D04bf1E568c777e822213040785B968405E",
+  "comptrollerImplementation": "0x97E1Ad3F5ddAe9eD340f159DdAA005799107610A",
+  "comptrollerProxy": "0xf2631D04bf1E568c777e822213040785B968405E",
+  "collateralFactorTimelock": "0xEB27E14a7E7Dd1652FBC6220df56F28a6b1047Fb",
+  "oracle": "0xeB8FFB77FFD6c8DccB4DEf02D670C0A1b791FF98",
+  "interestRateModel": "0xa79ED7ED42C920A77a4d297d86BA21fA4347b8e6",
+  "cErc20DelegateImplementation": "0xC63caB9Ae6F2C9763c996392C65A390588322afd",
+  "liquidationKeeper": "0xB46013E32E4010E62e7FCF88f083191d6D8A226f",
+  "xrplUserProxyFactory": "0x06B219Afe66EB4A2508D1c0F1ab4102d5cF776fA",
+  "xrplBridgeAdapter": "0xa214Bf573c25fFa2d99d26e55fC023f2f0dcD848",
+  "markets": [
+    {
+      "underlying": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "cToken": "0xEFedd95eFdB71652bd93F58b2B7F77748Dee04F6",
+      "cTokenSymbol": "sXRP",
+      "bridgeListed": true,
+      "oracleMode": "BAND"
+    },
+    {
+      "underlying": "0xa16148c6Ac9EDe0D82f0c52899e22a575284f131",
+      "cToken": "0x21Da09A16d69757C0731De3b83e65061BCF30E00",
+      "cTokenSymbol": "sUSDC",
+      "bridgeListed": true,
+      "oracleMode": "BAND"
+    },
+    {
+      "underlying": "0x06e0B0F1A644Bb9881f675Ef266CeC15a63a3d47",
+      "cToken": "0xAf0be979e1B842B4C53Ed10fE81991D92be5B32E",
+      "cTokenSymbol": "smXRP",
+      "bridgeListed": true,
+      "oracleMode": "FALLBACK"
+    },
+    {
+      "underlying": "0xbAF2e0ef5D0dD17646F85129892E40fAA8065f53",
+      "cToken": "0xBC08F8E0cF29874a9C9C660cf5F045bD65F2270F",
+      "cTokenSymbol": "sXRPUSDCLP",
+      "bridgeListed": true,
+      "oracleMode": "FALLBACK"
+    },
+    {
+      "underlying": "0xD66b43e8a145e3b9e2d7e0F12f28255CB647Db7e",
+      "cToken": "0x48C2A0cA5a2780199ADd81BB7828612314Ae1728",
+      "cTokenSymbol": "sXRPARMYLP",
+      "bridgeListed": true,
+      "oracleMode": "FALLBACK"
+    }
+  ]
+}

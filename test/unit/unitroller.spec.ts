@@ -54,6 +54,27 @@ describe("Unitroller", function () {
     expect(await unitroller.pendingAdmin()).to.equal(ethers.ZeroAddress);
   });
 
+  it("rejects a zero or non-contract pending implementation", async function () {
+    const unitroller = await (await ethers.getContractFactory("Unitroller")).deploy();
+    await expect(unitroller._setPendingImplementation(ethers.ZeroAddress)).to.be.revertedWith("impl=0");
+
+    const eoa = ethers.Wallet.createRandom().address;
+    await expect(unitroller._setPendingImplementation(eoa)).to.be.revertedWith("impl not a contract");
+  });
+
+  it("rejects _acceptImplementation before any pending implementation was ever set", async function () {
+    const [admin] = await ethers.getSigners();
+    const unitroller = await (await ethers.getContractFactory("Unitroller")).deploy();
+
+    // pendingComptrollerImplementation is still the zero-value default here -- this exercises the
+    // "pendingComptrollerImplementation == address(0)" side of the OR-guard specifically, distinct
+    // from the "wrong caller" case already covered elsewhere.
+    expect(await unitroller.connect(admin)._acceptImplementation.staticCall()).to.equal(1);
+    await expect(unitroller.connect(admin)._acceptImplementation())
+      .to.emit(unitroller, "Failure")
+      .withArgs(1, 1, 0);
+  });
+
   it("delegates comptroller calls through the fallback once an implementation is installed", async function () {
     const [admin] = await ethers.getSigners();
     const unitroller = await (await ethers.getContractFactory("Unitroller")).deploy();

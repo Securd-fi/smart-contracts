@@ -15,6 +15,9 @@ contract MockCErc20Market {
     uint256 public nextBorrowResult;
     uint256 public nextRedeemResult;
     uint256 public nextLiquidationResult;
+    uint256 public nextEnterMarketResult;
+    uint256 public nextExitMarketResult;
+    bool public returnEmptyEnterMarketsArray;
 
     // Simulates Compound V2's per-account borrow balance and cToken balance so tests can exercise
     // the "repay all" (type(uint256).max) and "withdraw all" (redeem full cToken balance) sentinels.
@@ -40,6 +43,17 @@ contract MockCErc20Market {
         nextBorrowResult = borrowResult;
         nextRedeemResult = redeemResult;
         nextLiquidationResult = liquidationResult;
+    }
+
+    function setEnterExitMarketResults(uint256 enterMarketResult, uint256 exitMarketResult) external {
+        require(msg.sender == deployer, "only deployer");
+        nextEnterMarketResult = enterMarketResult;
+        nextExitMarketResult = exitMarketResult;
+    }
+
+    function setReturnEmptyEnterMarketsArray(bool empty) external {
+        require(msg.sender == deployer, "only deployer");
+        returnEmptyEnterMarketsArray = empty;
     }
 
     function setBorrowBalance(address account, uint256 balance) external {
@@ -102,8 +116,15 @@ contract MockCErc20Market {
         return address(this);
     }
 
-    function enterMarkets(address[] calldata) external returns (uint[] memory results) {
+    function enterMarkets(address[] calldata) external view returns (uint[] memory results) {
+        if (returnEmptyEnterMarketsArray) {
+            return new uint[](0);
+        }
         results = new uint[](1);
-        results[0] = 0;
+        results[0] = nextEnterMarketResult;
+    }
+
+    function exitMarket(address) external view returns (uint256) {
+        return nextExitMarketResult;
     }
 }

@@ -18,7 +18,6 @@ describe("XRPL LP oracle bot helpers", function () {
     },
     evm: {
       collateralAsset: "0x0000000000000000000000000000000000000001",
-      underlyingDecimals: 18,
       token0: "0x0000000000000000000000000000000000000010",
       token1: "0x0000000000000000000000000000000000000020"
     },
@@ -42,25 +41,28 @@ describe("XRPL LP oracle bot helpers", function () {
       price0E18,
       price1E18,
       lpSupplyE18,
-      800,
-      18
+      800
     );
 
     expect(result).to.equal(7360000000000000000n);
   });
 
-  it("rescales mantissa for non-18-decimal collateral assets", function () {
+  // computePublishedPriceMantissa deliberately returns a flat $-per-whole-LP-token price at 1e18
+  // precision regardless of the LP token's own decimals -- it used to rescale by underlyingDecimals
+  // itself, but that double-counted the same scaling SecurdPriceOracle.getUnderlyingPrice now applies
+  // on-chain when this posted price is read back for the Comptroller. See the comment on
+  // computePublishedPriceMantissa in runXrplLpOracleBot.ts for the full explanation.
+  it("does not rescale by collateral-asset decimals -- that's the on-chain oracle's job now", function () {
     const result = computePublishedPriceMantissa(
       100n * 10n ** 18n,
       0n,
       1n * 10n ** 18n,
       0n,
       10n * 10n ** 18n,
-      0,
-      6
+      0
     );
 
-    expect(result).to.equal(10n * 10n ** 30n);
+    expect(result).to.equal(10n * 10n ** 18n);
   });
 
   it("computes deviation bps and reserve jump checks", function () {

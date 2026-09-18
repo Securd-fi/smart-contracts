@@ -137,4 +137,47 @@ describe("SecurdLiquidationKeeper", function () {
     );
     await expect(wrapper.sweepAsset(asset.target, ethers.ZeroAddress, 1n)).to.be.revertedWith("to=0");
   });
+
+  it("transfers ownership when the initial owner differs from the deployer", async function () {
+    const [deployer, owner] = await ethers.getSigners();
+    const wrapper = await (await ethers.getContractFactory("SecurdLiquidationKeeper"))
+      .connect(deployer)
+      .deploy(owner.address);
+    expect(await wrapper.owner()).to.equal(owner.address);
+  });
+
+  it("rejects a zero owner at construction", async function () {
+    const Keeper = await ethers.getContractFactory("SecurdLiquidationKeeper");
+    await expect(Keeper.deploy(ethers.ZeroAddress)).to.be.revertedWith("owner=0");
+  });
+
+  it("restricts every admin-only function to the owner", async function () {
+    const { outsider, recipient, asset, borrowedMarket, wrapper } = await deployFixture();
+    const REVERT = "Ownable: caller is not the owner";
+
+    await expect(wrapper.connect(outsider).setKeeper(outsider.address, true)).to.be.revertedWith(REVERT);
+    await expect(wrapper.connect(outsider).setAssetLimit(asset.target, 1n)).to.be.revertedWith(REVERT);
+    await expect(wrapper.connect(outsider).setMarketLimit(borrowedMarket.target, 1n)).to.be.revertedWith(REVERT);
+    await expect(wrapper.connect(outsider).fund(asset.target, 1n)).to.be.revertedWith(REVERT);
+    await expect(wrapper.connect(outsider).sweepAsset(asset.target, recipient.address, 1n)).to.be.revertedWith(
+      REVERT
+    );
+    await expect(wrapper.connect(outsider).pause()).to.be.revertedWith(REVERT);
+    await expect(wrapper.connect(outsider).unpause()).to.be.revertedWith(REVERT);
+  });
+
+  it("rejects executeLiquidation when the borrowed market's underlying is the zero address", async function () {
+    const { keeper, borrower, collateralMarket, wrapper } = await deployFixture();
+    const zeroUnderlyingMarket = await (await ethers.getContractFactory("MockCErc20Market")).deploy(
+      ethers.ZeroAddress
+    );
+    await wrapper.setKeeper(keeper.address, true);
+    await wrapper.setMarketLimit(zeroUnderlyingMarket.target, 100_000n);
+
+    await expect(
+      wrapper
+        .connect(keeper)
+        .executeLiquidation(zeroUnderlyingMarket.target, borrower.address, 1_000n, collateralMarket.target)
+    ).to.be.revertedWithCustomError(wrapper, "InvalidAsset");
+  });
 });

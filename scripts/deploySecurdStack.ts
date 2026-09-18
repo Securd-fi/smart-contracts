@@ -123,12 +123,25 @@ async function main() {
   const jumpMultiplierPerYear = parseScaled(optionalEnv("SECURD_IRM_JUMP_MULTIPLIER_PER_YEAR", "0"));
   const egressGasValue = parseOptionalScaled(process.env.XRPL_EGRESS_GAS_VALUE);
   const pauseGuardian = process.env.SECURD_PAUSE_GUARDIAN?.trim();
+  if (pauseGuardian && !ethers.isAddress(pauseGuardian)) throw new Error(`SECURD_PAUSE_GUARDIAN is not a valid address: ${pauseGuardian}`);
   const borrowCapGuardian = process.env.SECURD_BORROW_CAP_GUARDIAN?.trim();
+  if (borrowCapGuardian && !ethers.isAddress(borrowCapGuardian)) throw new Error(`SECURD_BORROW_CAP_GUARDIAN is not a valid address: ${borrowCapGuardian}`);
   const deploymentOutputFile = process.env.DEPLOYMENT_OUTPUT_FILE?.trim();
-  const comptrollerExpectedAdmin = process.env.SECURD_PENDING_ADMIN?.trim() || owner;
+  const pendingAdminRaw = process.env.SECURD_PENDING_ADMIN?.trim();
+  if (pendingAdminRaw && !ethers.isAddress(pendingAdminRaw)) throw new Error(`SECURD_PENDING_ADMIN is not a valid address: ${pendingAdminRaw}`);
+  const comptrollerExpectedAdmin = pendingAdminRaw || owner;
   const deployCollateralFactorTimelock = process.env.SECURD_DEPLOY_COLLATERAL_FACTOR_TIMELOCK !== "false";
-  const deployMedianOracleReporter = process.env.SECURD_DEPLOY_MEDIAN_ORACLE_REPORTER === "true";
+  const deployMedianOracleReporterRaw = process.env.SECURD_DEPLOY_MEDIAN_ORACLE_REPORTER?.trim();
+  if (deployMedianOracleReporterRaw !== undefined && deployMedianOracleReporterRaw !== "true" && deployMedianOracleReporterRaw !== "false") {
+    // Catches a forgotten REQUIRED_BEFORE_DEPLOY placeholder: without this check any value
+    // other than the literal string "true" silently resolves to "don't deploy it" below,
+    // quietly dropping the median-reporter safety net the launch plan recommends for the
+    // two LP markets instead of failing loudly.
+    throw new Error(`SECURD_DEPLOY_MEDIAN_ORACLE_REPORTER must be exactly "true" or "false" (or unset), got: "${deployMedianOracleReporterRaw}"`);
+  }
+  const deployMedianOracleReporter = deployMedianOracleReporterRaw === "true";
   const medianReporterOwner = process.env.SECURD_MEDIAN_REPORTER_OWNER?.trim() || owner;
+  if (medianReporterOwner !== owner && !ethers.isAddress(medianReporterOwner)) throw new Error(`SECURD_MEDIAN_REPORTER_OWNER is not a valid address: ${medianReporterOwner}`);
   const medianReporterConfigRaw = process.env.SECURD_MEDIAN_REPORTER_CONFIG?.trim();
   const medianReporterReportersRaw = process.env.SECURD_MEDIAN_REPORTER_REPORTERS?.trim();
 
@@ -137,8 +150,23 @@ async function main() {
   const markets = loadMarketsFromEnv();
 
   const [deployer] = await ethers.getSigners();
+  const network = await ethers.provider.getNetwork();
+  console.log(`Connected chain id: ${network.chainId} (via ${process.env.XRPL_EVM_RPC_URL || "default network config"})`);
   console.log(`Deployer: ${deployer.address}`);
   console.log(`Final owner: ${owner}`);
+
+  // Optional, extra defense-in-depth on top of hardhat.config.ts's own network selection --
+  // whichever .env happens to be exported in the shell decides the target chain, and neither
+  // hardhat.config.ts nor package.json auto-load a .env file, so it's easy to run this against
+  // the wrong network with a stale shell. Set SECURD_EXPECTED_CHAIN_ID (e.g. 1440000 for
+  // mainnet) to make a mismatch fail loudly instead of silently deploying to the wrong chain.
+  const expectedChainId = process.env.SECURD_EXPECTED_CHAIN_ID?.trim();
+  if (expectedChainId && network.chainId !== BigInt(expectedChainId)) {
+    throw new Error(
+      `SECURD_EXPECTED_CHAIN_ID=${expectedChainId} but the connected RPC reports chain id ${network.chainId}. ` +
+      `Refusing to deploy -- check which .env is loaded in this shell.`
+    );
+  }
 
   const Oracle = await ethers.getContractFactory("SecurdPriceOracle");
   const oracle = await Oracle.deploy(deployer.address, bandStdReference);

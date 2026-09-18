@@ -79,8 +79,17 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Markers used throughout this repo's mainnet config/docs to flag a value that still needs
+// real operator input (see docs/17-mainnet-launch-plan.md). A string field containing one of
+// these is syntactically valid but operationally wrong -- e.g. the XRPL trusted-source address
+// is free-form text with no other format check, so a forgotten placeholder would otherwise pass
+// validation silently and get deployed as a real (garbage) trust relationship.
+const PLACEHOLDER_MARKERS = ["REQUIRED_BEFORE_DEPLOY", "PLACEHOLDER_REQUIRED", "VERIFY_BEFORE_DEPLOY"];
+
 function assertString(value: unknown, field: string): asserts value is string {
   assert(typeof value === "string" && value.trim().length > 0, `${field} must be a non-empty string`);
+  const marker = PLACEHOLDER_MARKERS.find((m) => (value as string).includes(m));
+  assert(!marker, `${field} still contains an unfilled placeholder ("${marker}") -- replace it with a real value before deploying`);
 }
 
 function assertBoolean(value: unknown, field: string): asserts value is boolean {

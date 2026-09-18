@@ -1,0 +1,90 @@
+[
+  {
+    "_comment": "Native XRP. Underlying sentinel and bridgeTokenId verified live against XRPL EVM mainnet (chain 1440000) and Axelar's axelar-contract-deployments mainnet.json. Same pattern already proven live on testnet (sXRP).",
+    "underlying": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+    "cTokenName": "Securd XRP",
+    "cTokenSymbol": "sXRP",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "750000000000000000",
+    "borrowCap": "2800000000000000000000000",
+    "bridgeTokenId": "0xba5a21ca88ef6bba2bfff5088994f90e1077e2a1cc3dcc38bd261f00fce2824f",
+    "listOnBridge": true,
+    "oracle": {
+      "type": "BAND",
+      "bandBaseSymbol": "XRP",
+      "bandQuoteSymbol": "USD",
+      "bandMaxDelay": "3600"
+    }
+  },
+  {
+    "_comment": "USDC (Axelar-wrapped). Address and decimals (6) re-verified live via eth_call on 2026-09-10. bridgeTokenId read directly from the token's own interchainTokenId() on-chain, not guessed.",
+    "underlying": "0xa16148c6Ac9EDe0D82f0c52899e22a575284f131",
+    "cTokenName": "Securd XRPL USD Coin",
+    "cTokenSymbol": "sUSDC",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "800000000000000000",
+    "borrowCap": "40000000000",
+    "bridgeTokenId": "0xaab70a74fae5d4d70134970cc0a7a03ff70bfffd5891f79d2f4daf1b5fade846",
+    "listOnBridge": true,
+    "oracle": {
+      "type": "BAND",
+      "bandBaseSymbol": "USDC",
+      "bandQuoteSymbol": "USD",
+      "bandMaxDelay": "3600"
+    }
+  },
+  {
+    "_comment": "mXRP (Midas). Collateral only, borrowCap=0 by design (circular-leverage guard, per risk doc). The token itself doesn't expose interchainTokenId() directly (unlike USDC/USDT/WETH/WBTC) because it's bridged as a LOCK_UNLOCK canonical token (tokenManager.implementationType()==2, verified on-chain), not a native interchain token. Resolved via InterchainTokenFactory.canonicalInterchainTokenId(mXRP address) and cross-checked with InterchainTokenService.registeredTokenAddress(tokenId) round-tripping back to the mXRP address -- confirmed match on 2026-09-10.",
+    "underlying": "0x06e0B0F1A644Bb9881f675Ef266CeC15a63a3d47",
+    "cTokenName": "Securd Midas XRP",
+    "cTokenSymbol": "smXRP",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "600000000000000000",
+    "borrowCap": "0",
+    "bridgeTokenId": "0xa4bd87319a0ff1ca83418e5b1b792b8e729c3a5ded95bf92cb1d5647d7f992f6",
+    "listOnBridge": true,
+    "oracle": {
+      "_priceSource": "Live spot price from the XRP/mXRP AMM pool on XRPL Ledger mainnet (account rUkK6Tjwksc7PdpTDSoppFFY2VfUD4GNeJ, currency 6D58525000000000000000000000000000000000 issued by rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw), queried live on 2026-09-10: XRP reserve 64866.934405, mXRP reserve 62325.55348734805 -> 1 mXRP = 1.040776 XRP, x live Band XRP/USD (1.376417385) = $1.432542. This is a one-time bootstrap value (spot, not the doc's TWAP methodology) -- the fallback oracle bot must take over with the real TWAP once live.",
+      "type": "FALLBACK",
+      "fallbackMaxDelay": "900",
+      "initialFallbackPrice": "1432542051067722668"
+    }
+  },
+  {
+    "_comment": "XRP/USDC XRPL AMM LP token. Address/decimals(15)/tokenId all re-verified live via eth_call on 2026-09-10 (deployment tx already decoded in docs/xrpl-lp-token-bridge-readiness-verification.md). Collateral-only: borrowCap=0, reserveFactor=0 (no interest income). Requires the fallback oracle bot to be live BEFORE activating user traffic -- see docs/07-deployment-configuration.md section 7.",
+    "underlying": "0xbAF2e0ef5D0dD17646F85129892E40fAA8065f53",
+    "cTokenName": "Securd XRP/USDC LP",
+    "cTokenSymbol": "sXRPUSDCLP",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "570000000000000000",
+    "borrowCap": "0",
+    "bridgeTokenId": "0xe2f2d147cc5da2f15c947b85d9a0bd88dc7e64bf864725a76b064002a06e291b",
+    "listOnBridge": true,
+    "oracle": {
+      "_pricingDeferred": "initialFallbackPrice deliberately OMITTED (not placeholdered) -- the field is optional; setFallbackConfig() only needs fallbackMaxDelay to list the market. The LP oracle bot/aggregator setup is deferred per team decision -- see docs/15-xrpl-lp-oracle-bot.md and scripts/runXrplLpOracleBot.ts. Post the real price via oracle.postFallbackPrice() once the bot is live, BEFORE routing any real user traffic to this market (docs/07-deployment-configuration.md section 7). IMPORTANT: whatever value eventually gets posted must be a FLAT $-per-whole-LP-token price at 1e18 precision (matching computePublishedPriceMantissa's output convention) -- SecurdPriceOracle.getUnderlyingPrice applies the underlying-decimals scaling itself now (fixed 2026-09-10), do not pre-scale by this LP token's 15 decimals or the market will be over-valued by 1000x.",
+      "type": "FALLBACK",
+      "fallbackMaxDelay": "900"
+    }
+  },
+  {
+    "_comment": "XRP/ARMY XRPL AMM LP token. Address/decimals(15)/tokenId all re-verified live via eth_call on 2026-09-10. ARMY external price-feed precondition satisfied (CoinGecko listing confirmed per readiness doc), though the oracle formula prices only the XRP-side reserve (ARMY valued at 0, conservative by design). Collateral-only.",
+    "underlying": "0xD66b43e8a145e3b9e2d7e0F12f28255CB647Db7e",
+    "cTokenName": "Securd XRP/ARMY LP",
+    "cTokenSymbol": "sXRPARMYLP",
+    "cTokenDecimals": 8,
+    "initialExchangeRateMantissa": "1000000000000000000",
+    "collateralFactorMantissa": "350000000000000000",
+    "borrowCap": "0",
+    "bridgeTokenId": "0x1531fd6c4c214c74ed2c93c7692c39e109eaf0e6057d26c19b2f24e542294a23",
+    "listOnBridge": true,
+    "oracle": {
+      "_pricingDeferred": "initialFallbackPrice deliberately OMITTED (not placeholdered) -- the field is optional; setFallbackConfig() only needs fallbackMaxDelay to list the market. The LP oracle bot/aggregator setup is deferred per team decision -- see docs/15-xrpl-lp-oracle-bot.md and scripts/runXrplLpOracleBot.ts. Post the real price via oracle.postFallbackPrice() once the bot is live, BEFORE routing any real user traffic to this market (docs/07-deployment-configuration.md section 7). IMPORTANT: whatever value eventually gets posted must be a FLAT $-per-whole-LP-token price at 1e18 precision (matching computePublishedPriceMantissa's output convention) -- SecurdPriceOracle.getUnderlyingPrice applies the underlying-decimals scaling itself now (fixed 2026-09-10), do not pre-scale by this LP token's 15 decimals or the market will be over-valued by 1000x.",
+      "type": "FALLBACK",
+      "fallbackMaxDelay": "900"
+    }
+  }
+]

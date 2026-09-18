@@ -49,10 +49,6 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-function bigIntPow10(exp: number): bigint {
-  return 10n ** BigInt(exp);
-}
-
 export function parseDecimalToE18(value: string): bigint {
   const [whole, fraction = ""] = value.split(".");
   const normalizedFraction = `${fraction}000000000000000000`.slice(0, 18);
@@ -120,18 +116,18 @@ export function computePublishedPriceMantissa(
   price0E18: bigint,
   price1E18: bigint,
   lpSupplyE18: bigint,
-  haircutBps: number,
-  underlyingDecimals: number
+  haircutBps: number
 ): bigint {
+  // Returns a flat $-per-whole-LP-token price at 1e18 precision -- the same convention Chainlink/Band
+  // report natively. Do NOT rescale by the LP token's own decimals here: SecurdPriceOracle.
+  // getUnderlyingPrice applies the 10^(18-underlyingDecimals) scaling itself when this posted price is
+  // read back for the Comptroller (fixed after a critical mispricing bug was found and fixed on-chain).
+  // Pre-scaling here too would silently double-apply that factor and over-value the LP token's collateral
+  // by the same amount -- this function previously did that (parameterized by underlyingDecimals) before
+  // the on-chain fix existed; keep the two in sync if either side ever changes.
   const poolValueE18 = mulDiv(reserve0E18, price0E18, 10n ** 18n) + mulDiv(reserve1E18, price1E18, 10n ** 18n);
   const rawLpPriceE18 = mulDiv(poolValueE18, 10n ** 18n, lpSupplyE18);
-  const haircutPriceE18 = mulDiv(rawLpPriceE18, BigInt(10_000 - haircutBps), 10_000n);
-
-  if (underlyingDecimals <= 18) {
-    return haircutPriceE18 * bigIntPow10(18 - underlyingDecimals);
-  }
-
-  return haircutPriceE18 / bigIntPow10(underlyingDecimals - 18);
+  return mulDiv(rawLpPriceE18, BigInt(10_000 - haircutBps), 10_000n);
 }
 
 function loadState(statePath: string): BotState {
@@ -272,8 +268,7 @@ async function processPool(
     price0E18,
     price1E18,
     lpSupplyE18,
-    pool.risk.haircutBps,
-    pool.evm.underlyingDecimals
+    pool.risk.haircutBps
   );
 
   const now = Math.floor(Date.now() / 1000);

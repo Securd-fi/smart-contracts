@@ -70,4 +70,39 @@ describe("JumpRateModelV2", function () {
 
     expect(await model.kink()).to.equal(ethers.parseEther("0.85"));
   });
+
+  it("rejects a zero owner at construction", async function () {
+    const Model = await ethers.getContractFactory("JumpRateModelV2");
+    await expect(
+      Model.deploy(0, 0, 0, ethers.parseEther("0.8"), ethers.ZeroAddress)
+    ).to.be.revertedWith("owner=0");
+  });
+
+  it("rejects an out-of-range kink on construction and on update", async function () {
+    const [owner] = await ethers.getSigners();
+    const Model = await ethers.getContractFactory("JumpRateModelV2");
+
+    await expect(Model.deploy(0, 0, 0, 0, owner.address)).to.be.revertedWith("kink out of range");
+    await expect(
+      Model.deploy(0, 0, 0, ethers.parseEther("1.01"), owner.address)
+    ).to.be.revertedWith("kink out of range");
+
+    const model = await Model.deploy(0, 0, 0, ethers.parseEther("0.8"), owner.address);
+    await expect(model.updateJumpRateModel(0, 0, 0, 0)).to.be.revertedWith("kink out of range");
+    await expect(model.updateJumpRateModel(0, 0, 0, ethers.parseEther("1.01"))).to.be.revertedWith(
+      "kink out of range"
+    );
+  });
+
+  it("clamps utilization to 100% when reserves exceed cash plus borrows", async function () {
+    const [owner] = await ethers.getSigners();
+    const model = await (
+      await ethers.getContractFactory("JumpRateModelV2")
+    ).deploy(0, 0, 0, ethers.parseEther("0.8"), owner.address);
+
+    // cash + borrows (100) <= reserves (100): would underflow the natural denominator, must clamp.
+    expect(await model.utilizationRate(60, 40, 100)).to.equal(ethers.parseEther("1"));
+    // Strictly greater reserves too.
+    expect(await model.utilizationRate(10, 10, 21)).to.equal(ethers.parseEther("1"));
+  });
 });

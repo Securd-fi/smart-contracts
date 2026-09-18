@@ -37,7 +37,6 @@ export interface XrplLpOraclePoolXrplConfig {
 
 export interface XrplLpOraclePoolEvmConfig {
   collateralAsset: string;
-  underlyingDecimals: number;
   token0: string;
   token1: string;
 }
@@ -139,8 +138,6 @@ export function parseXrplLpOracleConfig(input: unknown): XrplLpOracleConfig {
 
     assert(isObject(pool.evm), `pools[${index}].evm must be an object`);
     assertAddress(pool.evm.collateralAsset, `pools[${index}].evm.collateralAsset`);
-    assertNumber(pool.evm.underlyingDecimals, `pools[${index}].evm.underlyingDecimals`);
-    assert(pool.evm.underlyingDecimals >= 0 && pool.evm.underlyingDecimals <= 36, `pools[${index}].evm.underlyingDecimals out of range`);
     assertAddress(pool.evm.token0, `pools[${index}].evm.token0`);
     assertAddress(pool.evm.token1, `pools[${index}].evm.token1`);
 

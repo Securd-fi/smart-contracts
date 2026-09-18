@@ -1,0 +1,103 @@
+{
+  "_purpose": "Per-market reserve factor and interest-rate-model curve, consumed by scripts/applyMarketRiskParameters.ts AFTER deploy:full-stack + Unitroller admin acceptance. deploySecurdStack.ts deploys one shared JumpRateModelV2 for every market and never calls _setReserveFactor -- this file supplies the per-asset values from docs/securd-asset-listing-risk-parameters.md Part 4/5 that the shared deploy step cannot express. Values are annual-rate mantissas (1e18-scaled), matching JumpRateModelV2's constructor units (baseRatePerYear, multiplierPerYear, jumpMultiplierPerYear) and kink as a 1e18-scaled fraction.",
+  "_signerNote": "cToken admin == DEPLOY_OWNER (the final owner/multisig set at construction time), NOT the deployer key. If DEPLOY_OWNER is a multisig, run scripts/applyMarketRiskParameters.ts with --print-calldata and submit the encoded calls through your multisig UI instead of direct-send.",
+  "markets": [
+    {
+      "cTokenSymbol": "sXRP",
+      "reserveFactorMantissa": "200000000000000000",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "50000000000000000",
+        "jumpMultiplierPerYear": "850000000000000000",
+        "kink": "800000000000000000"
+      }
+    },
+    {
+      "cTokenSymbol": "sUSDC",
+      "reserveFactorMantissa": "200000000000000000",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "80000000000000000",
+        "jumpMultiplierPerYear": "750000000000000000",
+        "kink": "900000000000000000"
+      }
+    },
+    {
+      "cTokenSymbol": "smXRP",
+      "_note": "borrowCap=0, no borrowing ever occurs -- curve is inert. Reserve factor set to 20% per the doc's literal table even though it can never accrue anything (harmless).",
+      "reserveFactorMantissa": "200000000000000000",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "0",
+        "jumpMultiplierPerYear": "0",
+        "kink": "800000000000000000"
+      }
+    },
+    {
+      "cTokenSymbol": "sXRPUSDCLP",
+      "_note": "collateral-only market, borrowCap=0, no interest income -- reserve factor 0% and zero-rate IRM per the doc.",
+      "reserveFactorMantissa": "0",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "0",
+        "jumpMultiplierPerYear": "0",
+        "kink": "800000000000000000"
+      }
+    },
+    {
+      "cTokenSymbol": "sXRPARMYLP",
+      "_note": "collateral-only market, borrowCap=0, no interest income -- reserve factor 0% and zero-rate IRM per the doc.",
+      "reserveFactorMantissa": "0",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "0",
+        "jumpMultiplierPerYear": "0",
+        "kink": "800000000000000000"
+      }
+    },
+    {
+      "cTokenSymbol": "sWETH",
+      "_note": "Phase 2 -- prepare now, apply once the market is actually deployed/seeded.",
+      "reserveFactorMantissa": "200000000000000000",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "50000000000000000",
+        "jumpMultiplierPerYear": "820000000000000000",
+        "kink": "850000000000000000"
+      }
+    },
+    {
+      "cTokenSymbol": "sUSDT",
+      "_note": "Phase 2 -- prepare now, apply once the market is actually deployed/seeded.",
+      "reserveFactorMantissa": "200000000000000000",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "80000000000000000",
+        "jumpMultiplierPerYear": "750000000000000000",
+        "kink": "900000000000000000"
+      }
+    },
+    {
+      "cTokenSymbol": "sWBTC",
+      "_note": "Phase 2 -- prepare now, apply once the market is actually deployed/seeded.",
+      "reserveFactorMantissa": "200000000000000000",
+      "irm": {
+        "baseRatePerYear": "0",
+        "multiplierPerYear": "50000000000000000",
+        "jumpMultiplierPerYear": "820000000000000000",
+        "kink": "800000000000000000"
+      }
+    }
+  ],
+  "offChainSupplyCaps": {
+    "_purpose": "No on-chain supply-cap mechanism exists in this Comptroller (verified: only borrowCaps exist). These targets are enforced operationally by scripts/checkSupplyCaps.ts, not by the contracts.",
+    "sXRP": { "unit": "XRP", "amount": "3500000" },
+    "sUSDC": { "unit": "USDC", "amount": "50000" },
+    "smXRP": { "unit": "mXRP", "amount": "5500000" },
+    "sXRPUSDCLP": { "unit": "USD", "amount": "95600" },
+    "sXRPARMYLP": { "unit": "USD", "amount": "34000" },
+    "sWETH": { "unit": "WETH", "amount": "20" },
+    "sUSDT": { "unit": "USDT", "amount": "50000" },
+    "sWBTC": { "unit": "WBTC", "amount": "0.75" }
+  }
+}
