@@ -225,15 +225,68 @@ be retried or corrected** — not automatically, not manually.
 
 **Funds status:** confirmed via `account_lines` — the 0.5 USDC left the XRPL Ledger
 account (1.25 → 0.75 USDC, irreversible on that side) and is **not** in the bridge adapter
-(confirmed 0 balance). It is held in Axelar's cross-chain custody in an undeliverable
-state. No refund/recovery mechanism was found via Axelarscan's public API in the time
-spent looking; resolving this likely requires contacting Axelar directly.
+(confirmed 0 balance). It is held by the Axelar gateway account on XRPL in an
+undeliverable state.
 
-**Unresolved:** the correct XRPL Ledger issuer/currency that actually links to tokenId
-`0xaab70a74...` was not found despite searching Axelarscan's GMP history and token APIs —
-either no successful XRPL→this-token transfer has ever happened, or it isn't discoverable
-through the endpoints tried. **Do not attempt another USDC bridge-deposit guess** without
-confirming the correct source first, ideally directly with Axelar.
+**RESOLVED (2026-10-01) — permanently unrecoverable, confirmed by Axelar and
+independently proven against our own contract.** Asked Axelar directly; their answer
+(quoted, lightly trimmed):
+
+> No refund mechanism exists for this message. The 0.5 USDC is held by the gateway
+> account on XRPL, and the message is approved on XRPL EVM. Because your memo included
+> a payload, ITS calls `executeWithInterchainToken` on your contract, which reverts on
+> the tokenId check. ITS has no path to redirect, cancel or refund an approved message.
+> The approval does not expire, so if your contract can ever be made to accept this tx,
+> anyone can execute it and the funds are delivered.
+
+That last sentence raised an obvious question — could the adapter ever be reconfigured
+(e.g. temporarily listing the wrong token `0xDaF4556169c4F3f2231d8ab7BC8772Ddb7D4c84C`
+as a market) to let this specific approved message through and recover the value as that
+other token? Checked by decoding the actual signed payload still sitting on Axelar
+(`messageId 0x7c52a404...`, via `axelarscan.io/gmp` raw `call.returnValues.payload`):
+the envelope's `market` field is `0x21Da09A16d69757C0731De3b83e65061BCF30E00` (the real
+sUSDC cToken) and its `underlying` field is `0xa16148c6Ac9EDe0D82f0c52899e22a575284f131`
+(the real sUSDC underlying) — both cryptographically fixed by the original signature, and
+neither is the wrong token. `amount` decodes to `500000` (0.5 USDC at 6 decimals) — the
+original attempt's amount scaling was correct; only the issuer/token was wrong.
+
+`XRPLSecurdBridgeAdapter` runs two checks against the *same* `cfg.underlying` value, read
+fresh from `marketConfigOf[envelope.market]` at execution time: `_validateEnvelopeBase`
+requires `cfg.underlying == envelope.underlying` (the real sUSDC address, fixed in the
+signature), and `executeWithInterchainToken` requires `cfg.underlying == token` (the
+wrong token actually delivered by ITS). Since `envelope.underlying` and the delivered
+`token` are different, fixed addresses, no value of `cfg.underlying` can satisfy both
+checks at once — **no market reconfiguration, past or future, can ever make this
+specific message executable.** Axelar's caution was correct as a general statement about
+approved ITS messages; for this particular stuck message our own contract's dual
+consistency check rules it out. Conclusion: the 0.5 USDC is a permanent, bounded loss,
+not an open risk — no one (including us) can ever extract it, and no further action is
+needed on this message.
+
+**Also resolved — Q1/Q2 (correct USDC route), officially confirmed by Axelar:**
+
+> TokenId `0xaab70a74...` is registered on the XRPL side. The XRPL asset that delivers
+> into it is: Issuer `rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw` (the Axelar gateway account
+> itself), Currency `USDC.axl` (hex `555344432E61786C000000000000000000000000`),
+> Decimals 6 on both XRPL and XRPL EVM.
+
+This is an **official confirmation**, independent of and matching exactly what we found
+ourselves via Strobe Finance's public docs (§5.4b) and then proved empirically with the
+real 0.03 USDC.axl supply in §5.4d. No longer just empirically inferred — now
+Axelar-confirmed on both the issuer/currency and the decimals convention.
+
+**Also resolved — Q4 (is the Payment-with-memos pattern valid for a
+NATIVE_INTERCHAIN_TOKEN specifically):**
+
+> Your Payment-with-memos pattern is correct and works for any token type. The token
+> manager type on the destination (native interchain token, lock/unlock, etc.) is
+> irrelevant to the XRPL side. What determines the delivered tokenId is only the XRPL
+> asset (issuer + currency) you pay into the gateway.
+
+Confirms the same inbound mechanism (XRPL `Payment` to the gateway, `type=interchain_transfer`
+memos) is universal across token manager types — nothing token-type-specific needs to
+change for future markets regardless of whether they're `NATIVE_INTERCHAIN_TOKEN` or
+`LOCK_UNLOCK`.
 
 ### 5.4b Finding the correct USDC bridge route (self-directed research)
 
