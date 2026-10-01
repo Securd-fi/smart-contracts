@@ -96,6 +96,54 @@ shared relay account — trust is per-sender. Documented in
 correct by this test. Each new XRPL account that wants to use the bridge needs its own
 `setTrustedGmpSource`/`setTrustedItsSource`/`setIntentSigner` entries.
 
+### 3b. Registrar gate deployed — onboarding no longer needs the raw owner key (2026-10-01)
+
+Every new XRPL account's trust entries (above) are `onlyOwner` on the adapter, so onboarding
+required the cold `DEPLOY_OWNER` key for every single wallet — the friction root-caused in
+[xrpl-evm-mainnet-dapp-integration-review.md](xrpl-evm-mainnet-dapp-integration-review.md).
+Fixed by `contracts/xrpl-axelar-integration/XRPLAdapterRegistrarGate.sol`: a narrow
+intermediary contract that becomes the adapter's owner and exposes *only* first-time wallet
+registration (fixed signer, additive-only trust) to a separate, lower-stakes registrar key —
+full detail, 3-pass audit, and the real finding (`adminCall` can reach
+`adapter.renounceOwnership()`, an operational caution not a contract defect) in that same
+review doc.
+
+| Step | Address / Tx |
+|---|---|
+| Gate deployed (correctly configured, never received ownership — superseded by the next row before any use) | `0x7B2c467699a6DCA22814aC16B0eb972737034c92` |
+| **Gate actually in use** (owns the adapter) | `0x40C790F1464084744A00314D002AF59e718c13bB` |
+| Adapter ownership transfer tx | `0x568168931ae040da23628fe5e802cd03ab162ac6ecb83e4ae301f2442c2c7728` |
+| `registrar` / `backendSigner` on the live gate | `0x19A5F20d83336A4AAF133B0fE617798cC4F6C99b` (the dApp developer's server key) |
+
+**Why two gate addresses exist:** the deploy script redeploys a fresh gate on every run
+rather than accepting an existing one; stage 1 (deploy-only, no transfer) was run first to
+verify configuration safely, then stage 2 was run separately to actually transfer ownership
+— which deployed a second, distinct gate and transferred to *that* one.
+`0x7B2c467699a6DCA22814aC16B0eb972737034c92` is correctly configured but inert forever
+(never received ownership) — harmless, but do not use it for anything.
+
+**All owner-only adapter calls now go through `gate.adminCall(data)`** — direct calls to the
+adapter with the old owner key revert, since the adapter's owner is now the gate.
+
+**Verification performed (all via fresh independent reads, not trusting script output):**
+deployed bytecode length matches the compiled artifact exactly; every gate config getter
+(`owner`, `registrar`, `backendSigner`, `ADAPTER`, `paused`) read back correct; `adapter.owner()`
+confirmed to equal the live gate address; the developer's wallet
+(`rPpamGtvayxx97LcxM7dWhBSJsPCzdUCAB`) registered for real via `adminCall` (three
+transactions, all `status: 1`) and confirmed via fresh reads of
+`intentSignerOfXrplAccount`/`trustedItsSource`/`trustedGmpSource`; the registrar path itself
+proven against the real deployed gate via non-committing `eth_call` simulation — succeeds
+from the registrar address, reverts from any other address.
+
+**Known limitation:** a forked-mainnet integration test
+(`test/integration/adapterRegistrarGateFork.spec.ts`) was written to test against the exact
+real deployed instance pre-deployment, but hit a Hardhat/EDR tooling limitation (no built-in
+hardfork history for this chain id when forking historical blocks) not resolved through
+documented config. It's skipped by default. The 26-test unit suite
+(`test/unit/adapterRegistrarGate.spec.ts`) exercises the real, unmodified adapter contract
+bytecode exhaustively instead, and the live on-chain verification above substitutes for what
+the fork test would have added.
+
 ## 4. Test accounts
 
 | Role | Address | Notes |

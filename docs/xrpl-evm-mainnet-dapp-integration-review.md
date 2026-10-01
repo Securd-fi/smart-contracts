@@ -5,9 +5,16 @@ Companion to [xrpl-evm-mainnet-dapp-developer-guide.md](xrpl-evm-mainnet-dapp-de
 (addresses, executed transactions, scripts) and
 [xrpl-evm-mainnet-deployment.md](xrpl-evm-mainnet-deployment.md) (deployment record).
 
-**Ground rule for this plan: no new or modified smart contracts.** Every fix below uses only the already-deployed contracts
-(existing owner-only setters, the timelock, the oracle), dApp code, and operations. Where a scalable fix would need a contract
-change, it is stated as a limitation for the team's decision (§2.4), not designed here.
+**Ground rule for this plan at the time it was written: no new or modified smart contracts.** Every fix below originally used
+only the already-deployed contracts (existing owner-only setters, the timelock, the oracle), dApp code, and operations.
+
+**Superseded update (2026-10-01):** that ground rule was revisited and the limitation in §2.4 was closed. A narrow
+registrar contract (`XRPLAdapterRegistrarGate`) has been built, audited (3 independent passes), and deployed to mainnet —
+full detail, including the audit findings and live on-chain verification, in
+[xrpl-evm-mainnet-deployment.md](xrpl-evm-mainnet-deployment.md) §3b. §2 below is kept as-is for the historical record of
+why batch registration (Option C) was the interim answer, but it is no longer the live onboarding path — new wallets are
+now registered via `gate.registerAccount(xrplAddress)`, called by the dApp's own server key (now the gate's `registrar`),
+not by the owner key directly.
 
 ## 0. Scope, sources, method
 
