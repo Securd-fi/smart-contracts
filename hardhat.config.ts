@@ -23,7 +23,12 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
         runs: 200
-      }
+      },
+      // Pinned explicitly for Blockscout verification: solc auto-selects "paris" for 0.8.24 by default
+      // (confirmed via `hardhat compile` output, "evm target: paris"), but leaving it implicit means
+      // Blockscout's own recompilation during verification can't be certain it's using the same target,
+      // which silently produces different bytecode and fails verification with no useful error message.
+      evmVersion: "paris"
     }
   },
   networks: {
@@ -48,6 +53,24 @@ const config: HardhatUserConfig = {
       ...(forkMainnetRpcUrl ? { forking: { url: forkMainnetRpcUrl } } : {})
     },
     ...xrplEvmNetwork
+  },
+  // Blockscout source verification (explorer.xrplevm.org) via `npx hardhat verify`. Blockscout's
+  // Etherscan-compatible API doesn't check the API key value, but hardhat-verify requires the field to be
+  // a non-empty string, so any placeholder works -- there is no real secret here.
+  etherscan: {
+    apiKey: {
+      xrplEvm: "blockscout-no-api-key-required"
+    },
+    customChains: [
+      {
+        network: "xrplEvm",
+        chainId: Number(process.env.XRPL_EVM_CHAIN_ID || 1440000),
+        urls: {
+          apiURL: "https://explorer.xrplevm.org/api",
+          browserURL: "https://explorer.xrplevm.org"
+        }
+      }
+    ]
   },
   paths: {
     sources: "./contracts",
