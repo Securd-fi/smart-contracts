@@ -64,3 +64,17 @@ Purpose: prove that the XRP/USDC AMM LP token can be bridged to XRPL EVM and dep
   SLA. The bot going down makes the LP price stale after 15 minutes, which blocks accounts holding LP
   collateral. Mitigation for the test: monitor the bot and use the oracle circuit breaker.
 - Liquidator exit for wrapped LP tokens, which depends on outside liquidity.
+
+## ARMY mint pause: attempted, not executed
+
+- Queued `_setMintPaused(sXRPARMYLP, true)` through the timelock with zero delay (queue tx
+  `0xa88700762aac5684ba908a333cdd048544bd23cb3acbd903d81e6bcc0a5236cf`).
+- Execution reverted. The timelock's `execute` treats any 32-byte return value as an error code
+  (`if (ret.length == 32) ... if (errCode != 0) revert`). `_setMintPaused` returns `bool`, so a successful
+  `true` (1) is treated as a failure. Nothing changed on-chain.
+- The queued action was cancelled (tx `0x02aab34838c41f9df8cc7b84f2773eb46efaf6ad98667c166a39cb149d2ac56f`).
+- `_setMintPaused` can only be called by the pause guardian `0xd91A48d784B377b62dCc2963dAB219E547b4c0AE`
+  or the admin (the timelock). The pause guardian holder must run it directly until the timelock handles
+  bool returns. ARMY minting is still open.
+- Audit note: the same check would break any future timelock call to a bool-returning admin function.
+  Fix the timelock's return handling before using it for other admin changes.
