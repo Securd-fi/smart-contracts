@@ -77,6 +77,31 @@ This matches the actual redeemability of LP tokens for a proportional two-asset 
 
 It also avoids inventing a synthetic market price for the LP token when what Securd really needs is a conservative collateral valuation.
 
+### 4.4 Published price: fair LP value (XRP/USDC, 2026-10-06)
+
+The reserve sum in §4.2 is the redemption value at the current reserves, but it can be raised by trading the pool
+away from the oracle prices. The price the publisher posts for XRP/USDC is the **fair LP value** instead
+(owner decision 2026-10-06, see `docs/lp-price-calculation-spec.md` §2; written approval pending):
+
+Let `A = R0 * P0` and `B = R1 * P1` (the USD value of each side).
+
+`fair_lp_price = 2 * sqrt(A * B) / L`
+
+`published = fair_lp_price * (1 - haircut)`
+
+Why:
+
+- `(A + B) - 2 * sqrt(A * B) = (sqrt(A) - sqrt(B))^2 >= 0`, so the fair value is never above the reserve sum.
+- For an equal-weight constant-product pool, `A * B = k * P0 * P1` with `k = R0 * R1` the pool invariant. The fair
+  value depends on `k` and the oracle prices only, not on how the reserves are split, so trades that skew the
+  pool cannot raise it. The reserve sum can be raised that way.
+- When the pool sits at the oracle prices (`A = B`), the two are equal. The relative gap is about
+  `(sqrt(A) - sqrt(B))^2 / (A + B)`: under 0.01 % up to about 2.8 % imbalance between `A` and `B`.
+
+The haircut for the XRP/USDC collateral test is 25 % (2,500 bps). The guards around each post are in
+`docs/lp-price-calculation-spec.md` §3. The reference script `scripts/runXrplLpOracleBot.ts` still computes the
+reserve sum; it is not the live publisher.
+
 ## 5. Practical reserve inputs from XRPL
 
 Using `amm_info`, the bot should read:
