@@ -44,15 +44,18 @@ revocable capability instead of broad admin access.
 
 LP tokens have no independent price feed. The entire input is: the XRPL AMM pool's live reserves, and the
 already-live Band prices for the two underlying assets (XRP is already priced; USDC is already priced on
-this protocol's oracle). The formula (already implemented and tested — `computePublishedPriceMantissa` in
-`scripts/runXrplLpOracleBot.ts`, see [15-xrpl-lp-oracle-bot.md](15-xrpl-lp-oracle-bot.md) §4/§12/§18 for the
-full derivation):
+this protocol's oracle). The approved formula is the fair value (see [lp-price-calculation-spec.md](lp-price-calculation-spec.md) §2):
 
 ```
-poolValueE18   = reserve0E18 * price0E18 / 1e18  +  reserve1E18 * price1E18 / 1e18
-rawLpPriceE18  = poolValueE18 * 1e18 / lpSupplyE18
-publishedPrice = rawLpPriceE18 * (10000 - haircutBps) / 10000
+aE18           = reserve0E18 * price0E18 / 1e18
+bE18           = reserve1E18 * price1E18 / 1e18
+fairRawE18     = 2 * sqrt(aE18 * bE18) * 1e18 / lpSupplyE18
+publishedPrice = fairRawE18 * (10000 - haircutBps) / 10000
 ```
+
+Note: `scripts/runXrplLpOracleBot.ts` in the repo still computes the older sum-based value
+(`poolValue / lpSupply`). That formula is not the approved one. Switching the bot to the fair formula is
+part of the change pending the owner's written approval and PR #2 in `docs/15`.
 
 `price0E18`/`price1E18` come from `SecurdPriceOracle.previewPrices(address)` — **not** `getUnderlyingPrice`,
 which applies a different, Comptroller-specific scaling that would corrupt this math (this exact mistake is

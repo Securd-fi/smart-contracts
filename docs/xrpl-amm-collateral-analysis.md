@@ -306,7 +306,11 @@ LP_price_USD = 2 × sqrt(1,893,541 × 1.39 × 2,499,660) / lp_supply
 ### For XRP/non-stablecoin pools (ARMY, PHNIX, etc.)
 
 ```
-LP_price_XRP = 2 × xrp_reserve / lp_supply     [since 50/50 pool: xrp = 50% of value]
+LP_price_XRP = 2 × xrp_reserve / lp_supply     [valid only for an exactly 50/50 pool at oracle prices]
+
+This shortcut is not the general formula. For any pool, use the fair value
+`2 × sqrt(R_x × P_x × R_y × P_y) / L` (see `docs/lp-price-calculation-spec.md` §2). The shortcut
+matches it only when the two sides are equal in USD. ARMY is out of scope for the XRP/USDC test.
 LP_price_USD = LP_price_XRP × XRP_USD
 ```
 

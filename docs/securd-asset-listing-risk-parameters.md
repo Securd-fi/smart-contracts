@@ -401,7 +401,7 @@ LP_price_USD = 2 × sqrt(XRP_reserve × P_xrp × RLUSD_reserve × 1.00) / LP_sup
 
 **Role:** Collateral only — cannot be borrowed, no interest earned on deposit
 
-**Oracle:** `LP_price_USD = 2 × XRP_reserve × P_xrp / LP_supply`
+**Oracle:** `LP_price_USD = 2 × XRP_reserve × P_xrp / LP_supply` *(shortcut: valid only when the pool is exactly 50/50 in USD at oracle prices. For any other pool, use the fair value `2 × sqrt(R_x × P_x × R_y × P_y) / L`, see `docs/lp-price-calculation-spec.md` §2.)*
 ARMY is priced at $0 — only the XRP side of the pool is credited. This is conservative by design: if ARMY holds any market value, the actual collateral exceeds Securd's credit.
 
 *Current LP unit price (XRP-only): 2 × 244,601 × $1.39 / 3,165,547,749 ≈ $0.000215*

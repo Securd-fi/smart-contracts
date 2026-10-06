@@ -27,8 +27,14 @@ tokens have no such feed. Their fair value has to be *derived* from the AMM pool
 represent:
 
 ```
-LP price = (pool reserve0 × price0 + pool reserve1 × price1) / total LP token supply
+A = reserve0 × price0          (USD value of asset0 in the pool)
+B = reserve1 × price1          (USD value of asset1 in the pool)
+LP price (fair value) = 2 × sqrt(A × B) / total LP token supply
+published price = LP price × (1 − haircut)
 ```
+
+The fair value depends only on the pool's constant product, so it cannot be raised by moving the pool
+out of balance. A simple sum, `(A + B) / supply`, can be, and is not used.
 
 This is the same design already specified in
 [15-xrpl-lp-oracle-bot.md](15-xrpl-lp-oracle-bot.md) — this section restates the
@@ -117,10 +123,13 @@ function computePublishedPriceMantissa(
   lpSupplyE18: bigint,   // total LP token supply, scaled to 1e18
   haircutBps: number
 ): bigint {
-  const poolValueE18 = mulDiv(reserve0E18, price0E18, 10n ** 18n)
-                      + mulDiv(reserve1E18, price1E18, 10n ** 18n);
-  const rawLpPriceE18 = mulDiv(poolValueE18, 10n ** 18n, lpSupplyE18);
-  return mulDiv(rawLpPriceE18, BigInt(10_000 - haircutBps), 10_000n);
+  // A and B: USD value of each side, 1e18-scaled.
+  const aE18 = mulDiv(reserve0E18, price0E18, 10n ** 18n);
+  const bE18 = mulDiv(reserve1E18, price1E18, 10n ** 18n);
+  // Fair value F = 2 * sqrt(A * B) / L, at 1e18 scale. A*B is 1e36-scaled, so isqrt(A*B) is 1e18-scaled.
+  // isqrt: integer square root, floor. See bigSqrt in scripts/computeXrplLpPriceDryRun.ts.
+  const fairRawE18 = mulDiv(2n * isqrt(aE18 * bE18), 10n ** 18n, lpSupplyE18);
+  return mulDiv(fairRawE18, BigInt(10_000 - haircutBps), 10_000n);
 }
 ```
 
