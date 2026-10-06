@@ -143,9 +143,10 @@ async function main(): Promise<void> {
   let fairPublished = 0n;
   let sumPublished = 0n;
   if (L > 0n && V > 0n) {
-    // F = 2 * sqrt(A * B) / L. Work in 1e18: sqrt(A*B) is in 1e18 units (A and B are 1e18).
-    const sqrtAB = bigSqrt(A * B); // = sqrt(A*B) in 1e18 scale
-    const F = (2n * sqrtAB * E18) / L / 1n; // 2*sqrt(A*B)/L, 1e18 scale
+    // F = 2 * sqrt(A * B) / L, returned at 1e18 scale.
+    // A, B and L are all 1e18-scaled, so sqrt(A * B) is 1e18-scaled too.
+    const sqrtAB = bigSqrt(A * B);
+    const F = (2n * sqrtAB * E18) / L;
     const S = (V * E18) / L; // sum formula, for comparison only
     fairPublished = (F * (10_000n - haircutBps)) / 10_000n;
     sumPublished = (S * (10_000n - haircutBps)) / 10_000n;

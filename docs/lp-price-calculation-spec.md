@@ -18,7 +18,7 @@ Written for: the dApp developer who runs the LP price bot. This specifies how th
 |---|---|---|
 | `R_x` | XRP reserve of the AMM pool, in whole XRP | `amm_info` on the XRPL Ledger. XRP amounts are in drops: divide by 1,000,000. |
 | `R_u` | USDC reserve of the AMM pool, in whole USDC | `amm_info`, the USDC.axl or Circle USDC IOU value as a decimal string. Use the same issuer as the pool. |
-| `L` | total LP token supply, in whole LP tokens | `amm_info` LP token balance. The LP token has 15 decimals on the EVM side. Convert raw to whole units by dividing by 1e15 before any formula. |
+| `L` | total LP token supply, in whole LP tokens | `amm_info` `lp_token.value`. It is already a decimal string in whole LP tokens. Do not divide it by anything. The 15 decimals apply only to the EVM token, not to this XRPL value. |
 | `P_x` | USD price of one whole XRP | Oracle flat price for XRP: 1e18 per whole token. Use the flat read, not `getUnderlyingPrice`. |
 | `P_u` | USD price of one whole USDC | Oracle flat price for USDC, same convention. |
 | `h` | haircut | 0.25 (2500 bps) |
