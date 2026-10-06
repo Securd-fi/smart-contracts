@@ -50,7 +50,7 @@ published = F × (1 − h)
 
 Why the proposed one: `V − 2√(AB) = (√A − √B)² ≥ 0`, so `F ≤ S` always. `F` depends only on the pool invariant, so trades that skew the reserves cannot raise it. `S` can be raised by skewing the pool.
 
-**Approved formula (2026-10-06):** the protocol owner decided to use `F`, with the 25% haircut and the guards in §3. This was stated in chat. The owner's written approval line is still to come.
+**Approved formula (2026-10-06, owner's written approval):** the protocol owner approved the fair LP formula `F`, with the 25% haircut and the guards in §3. The owner's words: "As protocol owner I approve the fair LP formula F in the spec, with the 25% haircut and the guards in §3."
 
 ```
 A = R_x × P_x
