@@ -81,7 +81,7 @@ It also avoids inventing a synthetic market price for the LP token when what Sec
 
 The reserve sum in §4.2 is the redemption value at the current reserves, but it can be raised by trading the pool
 away from the oracle prices. The price the publisher posts for XRP/USDC is the **fair LP value** instead
-(owner decision 2026-10-06, see `docs/lp-price-calculation-spec.md` §2; written approval pending):
+(owner written approval 2026-10-06, see `docs/lp-price-calculation-spec.md` §2):
 
 Let `A = R0 * P0` and `B = R1 * P1` (the USD value of each side).
 
