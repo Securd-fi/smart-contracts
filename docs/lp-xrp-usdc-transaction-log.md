@@ -14,10 +14,11 @@ the XRPL account's own address, holds the cTokens and is what the Comptroller re
 **Intent signer registered for this account:** `0x200Ac4adc56C04EBb69be67484404eefECe4D06B`
 (confirmed matching `intentSignerOfXrplAccount` on the adapter before sending anything).
 
-**Status: LP supply, LP enter-market, LP withdraw, and USDC borrow/repay all proven end-to-end.
-XRP (as a collateral action, not just as gas) not attempted** — see §6. One real incident
+**Status: all three assets proven end-to-end via the real XRPL Ledger → Axelar path** — LP supply,
+LP enter-market, LP withdraw, USDC borrow/repay, and XRP supply/withdraw. One real incident
 occurred and is documented in full in §5: a withdraw of 0.5 LP failed to arrive on XRPL Ledger
-the first time, was traced to a real root cause, fixed, and a second withdraw then succeeded.
+the first time, was traced to a real root cause, fixed, and a second withdraw then succeeded. The
+XRP leg (§6) and the rest of the USDC/LP legs had no such incident.
 
 ---
 
@@ -236,18 +237,50 @@ whether ITS pre-checks destination trust line limits before attempting XRPL deli
   user to raise their trust line limit before a withdraw is attempted — or the loss risk the
   developer originally flagged is real for any such user, not just this test account.
 
-## 6. XRP as a collateral action — not attempted
+## 6. XRP as a collateral action — proven end-to-end, no incident
 
-No XRP SUPPLY, BORROW, or REPAY intent (as a lending action) was sent through Axelar from this
-account. The account's spendable balance is no longer the blocker — it was funded with 5 XRP
-during this test and has several XRP spendable now — this leg simply has not been attempted yet.
+Unlike the LP withdraw (§5), this leg succeeded on the first attempt for both directions. The
+difference: native XRP needs no trust line at all, so the failure mode that hit the LP IOU egress
+(a destination trust line limit of 0) does not apply here.
 
-Native XRP was used in this test only as **gas** (for GMP actions) and once as a **plain transfer**
-to top up the adapter (§5.3) — neither of those is an XRP collateral action.
+**Mechanism — SUPPLY:** an ITS action. The account sends native XRP (as drops) to the gateway,
+with a signed intent envelope (action type SUPPLY). The ITS scales drops (6 decimals) up by
+`10^12` to the 18-decimal EVM amount. **Script:**
+[scripts/submitXrplDeposit.ts](../scripts/submitXrplDeposit.ts). Note its `XRPL_DEPOSIT_DESTINATION_ADDRESS`
+env var is the GMP/ITS destination **contract** (the adapter), not an XRPL address — easy to
+misread given the name.
 
-Were this leg attempted, it would use the native-18-decimal scripts (`submitXrplDeposit.ts` for
-supply, `submitXrplBorrow.ts`/`submitXrplRepay.ts` for borrow/repay — not the `*Usdc*` variants,
-which hardcode 6-decimal scaling), with the same Add-Gas pattern as everything else in this test.
+**Mechanism — WITHDRAW:** a GMP action, same pattern as the LP withdraw in §5, using the
+unmodified `submitXrplWithdraw.ts` (its `ethers.parseEther()` 18-decimal scaling is correct here,
+since XRP genuinely has 18 decimals on the EVM side — this script should **not** be reused as-is
+for any other asset).
+
+### 6.1 Supply (0.3 XRP)
+
+| Step | Detail |
+|---|---|
+| Market / underlying | `sXRP` `0xEFedd95eFdB71652bd93F58b2B7F77748Dee04F6` / native precompile `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` |
+| Nonce used | 12 |
+| Drops → EVM scaling | `300000` drops → `300000000000000000` wei (×10^12) |
+
+1. **XRPL Payment (SUPPLY intent, ITS):** `94E250CB3FC5E7001F3B10DBF39C366D3A526B3A1F1877D4B6DF9BCD632AE537` — `tesSUCCESS`.
+2. **Add Gas top-up, 30,000 drops** (same `is_insufficient_fee` pattern as every ITS message in this test): `2DB92CD779DF8D958AAFFEEC7713C040730089DFCAF10ABC410BE33B94302E03`.
+3. **Verified result:** proxy's `sXRP` balance rose from `0.7` to `1.0` XRP — exactly the 0.3 XRP supplied.
+
+### 6.2 Withdraw (0.1 XRP)
+
+| Step | Detail |
+|---|---|
+| Nonce used | 13 |
+| Gas Payment (GMP, this is the gas itself) | 30,000 drops |
+
+1. **XRPL Payment (WITHDRAW intent, GMP):** `2989C217B202EAAD1A0EF8A9FCCB73D7D66C462456030C3FA36C8377AADAE78C` — `tesSUCCESS`. No top-up needed (`is_insufficient_fee: false` immediately — GMP gas is paid upfront in the Payment itself, unlike ITS).
+2. **EVM execution:** `0x3f80a75cbfcc7e56cd26b983f9bc4d5997f5e86b080ff489e32d3fb7e1b646df`. Proxy's `sXRP` balance dropped from `1.0` to `0.9` XRP.
+3. **Second hop, checked by child message ID** (see §7 for why this matters): `status: called`, `simplified_status: sent` — looked unfinished at the time it was checked.
+4. **Actual delivery, confirmed directly from `account_tx` rather than trusting the in-flight Axelarscan status:** a `Payment` from the gateway to `rPAdN2a4...` for exactly `100000` drops (0.1 XRP), `tesSUCCESS`. **Delivered**, even though Axelarscan's status check a moment earlier still showed it in flight — Axelarscan can lag the actual ledger state; when in doubt, check the ledger directly.
+
+**Known cosmetic bug, same family as §4/§7:** `submitXrplWithdraw.ts`'s dry-run message and final
+links also say "testnet" regardless of actual network — confirmed display-only again here.
 
 ## 7. Scripts reference
 
@@ -257,6 +290,8 @@ which hardcode 6-decimal scaling), with the same Add-Gas pattern as everything e
 | `scripts/submitXrplUsdcBorrow.ts` | USDC BORROW, GMP | `XRPL_SEED`, `DEPLOYER_PRIVATE_KEY` (= intent signer key here), `XRPL_USDC_BORROW_AMOUNT` | `XRPL_CONFIRM_SEND=true` |
 | `scripts/submitXrplUsdcRepay.ts` | USDC REPAY, ITS | `XRPL_SEED`, `INTENT_SIGNER_PRIVATE_KEY`, `XRPL_USDC_REPAY_AMOUNT` | `XRPL_CONFIRM_SEND=true` |
 | `scripts/submitXrplEnterMarket.ts` | ENTER_MARKET, GMP | `XRPL_SEED`, `DEPLOYER_PRIVATE_KEY` (= intent signer key here), `XRPL_DEPOSIT_MARKET`, `XRPL_DEPOSIT_UNDERLYING` | `XRPL_CONFIRM_SEND=true` |
+| `scripts/submitXrplDeposit.ts` | XRP SUPPLY, ITS | `XRPL_SEED`, `INTENT_SIGNER_PRIVATE_KEY`, `XRPL_DEPOSIT_DESTINATION_ADDRESS` (= adapter address), `XRPL_DEPOSIT_AMOUNT_DROPS` | `XRPL_CONFIRM_SEND=true` |
+| `scripts/submitXrplWithdraw.ts` | XRP WITHDRAW, GMP (correct as-is: native XRP really is 18 decimals) | `XRPL_SEED`, `DEPLOYER_PRIVATE_KEY`, `XRPL_WITHDRAW_AMOUNT_XRP` | `XRPL_CONFIRM_SEND=true` |
 | [scripts/submitXrplLpWithdraw.ts](../scripts/submitXrplLpWithdraw.ts) | LP WITHDRAW, GMP | `XRPL_SEED`, `INTENT_SIGNER_PRIVATE_KEY`, `XRPL_LP_WITHDRAW_AMOUNT` | `XRPL_CONFIRM_SEND=true` |
 | [scripts/sendXrplLpTrustSet.ts](../scripts/sendXrplLpTrustSet.ts) | Raise a trust line limit (no funds moved) | `XRPL_SEED`, `XRPL_LP_TRUST_LIMIT` | `XRPL_CONFIRM_SEND=true` |
 | [scripts/sendXrplNativeToEvmAddress.ts](../scripts/sendXrplNativeToEvmAddress.ts) | Plain native-XRP transfer to any EVM address (e.g. topping up a contract's gas reserve) | `XRPL_SEED`, `XRPL_NATIVE_AMOUNT_DROPS`, `XRPL_EVM_DESTINATION` | `XRPL_CONFIRM_SEND=true` |
@@ -315,10 +350,12 @@ client-side instead.
 ## 9. Open items
 
 - **Recover the first 0.5 LP** (§5.4) — needs Axelar's response and action, not ours.
-- **Fix the two scripts' hardcoded testnet links** (§7) — one-line change each, cosmetic only.
+- **Fix the three scripts' hardcoded testnet links** (`submitXrplEnterMarket.ts`,
+  `submitXrplWithdraw.ts`, used for both LP and XRP withdraws) — one-line change each, cosmetic only.
 - **Decide the dApp's handling of the trust-line-limit failure mode** (§5.5) before enabling LP
-  withdraw for real users.
-- **XRP as a collateral action** (§6) still not attempted; no longer blocked on funds.
+  withdraw for real users. XRP withdraw does not have this risk.
+- **Axelarscan's in-flight status can lag the real ledger state** (§6.2) — when a status check
+  shows a message still in flight, confirm against the ledger directly before concluding anything.
 - The LP's own contribution to this account's borrowing power is still small relative to the
   pre-existing `sXRP`/`sUSDC` collateral; a test that isolates the LP collateral factor at
   meaningful scale needs more LP supplied.
