@@ -312,7 +312,7 @@ An unpriced asset in an account's entered markets poisons the whole liquidity ch
    // after eta and within the 7-day grace period:
    await timelock.execute(actionId);
    ```
-   The timelock **reverts** (`ExecutionFailed`) on a non-zero Compound error code, so a price of 0 can no longer make this silently no-op as it did at deploy time; the action stays queued. Verify with `comptroller.markets(cToken).collateralFactorMantissa`.
+   The timelock **reverts** (`ExecutionFailed`) on a non-zero market error code, so a price of 0 can no longer make this silently no-op as it did at deploy time; the action stays queued. Verify with `comptroller.markets(cToken).collateralFactorMantissa`.
 4. XRP/ARMY additionally needs the "ARMY valued at 0" handling in the bot (guide §1.8) before any price is posted.
 5. **smXRP:** there is no live feed and no XRPL identity. Recommended: keep it out of the UI (retire from the allowlist) until a proper price source exists; do not "solve" it by owner-posting prices by hand (15-minute freshness window).
 
@@ -441,6 +441,6 @@ registration status endpoint live · adapter reserve funded and alerting · owne
 - Owner-only setters: `XRPLSecurdBridgeAdapter.sol` lines 143–191; live `owner()` on adapter/factory/oracle/keeper/timelock = `0x57eb9411…9247C`; factory `controller() = adapter`, `proxyCount = 1`, `setController` reverts when `proxyCount != 0`.
 - Egress: live `getBalance(adapter) = 0`; `egressGasValue = 0.35 XRP`; estimate `222 473 851 199 999 999` wei; `_egress` source; observed 0.35 → 0.
 - Repay: `CToken.repayBorrowFresh` lines 647–695; adapter sentinel lines 337–343, `_repay` 476–502; IRM parameters from `config/securd-market-risk-mainnet.json`; live `blocksPerYear = 9 014 400`; sUSDC `borrowRatePerBlock = 0` at zero utilization.
-- Timelock: `SecurdCollateralFactorTimelock.sol` — `MIN_DELAY 48 h`, `GRACE_PERIOD 7 d`, `execute` reverts on a non-zero Compound return code, `actionId = keccak256(abi.encode(target, value, data, eta))`.
+- Timelock: `SecurdCollateralFactorTimelock.sol` — `MIN_DELAY 48 h`, `GRACE_PERIOD 7 d`, `execute` reverts on a non-zero market return code, `actionId = keccak256(abi.encode(target, value, data, eta))`.
 - dApp: `lib/xrpl/types.ts:31`, `lib/constants/markets.ts`, `lib/xrpl/useSubmitIntent.ts`, `lib/xrpl/xrplPayment.ts`, `lib/xrpl/intentBuilder.ts`, `components/markets/BorrowModal.tsx:33,197`, `components/markets/ContractDataSync.tsx`, `app/api/register-user/route.ts`, `app/api/sign-intent/route.ts`.
 - Markets: live `getUnderlyingPrice`, `markets()`, `getCash()`, `borrowCaps`, guardian-paused flags, ITS `implementationType()`; `getAllMarkets().length = 5`.

@@ -347,9 +347,67 @@ client-side instead.
 | `XRPL_TESTUSER_SEED` (mapped to `XRPL_SEED`) | XRPL Ledger account `rPAdN2a4...` seed | `.env.xrpl-testuser-mainnet` |
 | `INTENT_SIGNER_PRIVATE_KEY` | Registered intent signer for that XRPL account | `.env.xrpl-testuser-signer` |
 
+## 8.5 Independent confirmation — the developer's own test, LP-only borrow at real scale
+
+Run from the developer's own XRPL account, `rPpamGtvayxx97LcxM7dWhBSJsPCzdUCAB` (not our test
+account) — this is an independent result, not produced by this audit, and verified here after the
+fact.
+
+| Check | Result |
+|---|---|
+| Transaction | `0x26fe5b1e3d579a7b4d5c734b140125c7ce7e763bca2a7a7c25b82c1fdcf611e4`, block `8050754` — `success` |
+| Proxy | `0xcFCB494284Adb2477F964d040b930E083be32d94` |
+| `checkMembership(proxy, sXRPUSDCLP)` | `true` |
+| `getAssetsIn(proxy)` | `[sXRPUSDCLP, sXRP]` — no `sUSDC` |
+| LP cToken balance | `100500000000000000` raw → **~100.5 LP** |
+| `sXRP` cToken balance (collateral) | `0` |
+| `sUSDC` cToken balance (collateral) | `0` |
+| `sXRP` borrow balance after | `10000000000000000` raw → `0.01 XRP` |
+| Liquidity remaining | ≈`$0.0546`, positive, no shortfall |
+
+**This is a clean LP-only collateral borrow** — no `sXRP` or `sUSDC` was ever supplied to this
+proxy, so the 0.01 XRP borrow is backed entirely by ~100.5 LP. This fulfills, independently, item 4
+of the developer's original four-step list (an LP-only-backed borrow at a scale above the ~15 LP
+he estimated was needed — our own tests never got past ~1 LP).
+
+**Cross-checked on the XRPL Ledger side:** the source account holds `437.15138523` LP remaining
+(consistent with having supplied ~100.5 of a larger holding), and its own LP trust line limit is
+`1,000,000` — **not** `0`. Unlike our test account (§5.1), this account is not exposed to the
+`tecPATH_DRY` withdraw failure mode; its trust line was evidently set up correctly from the start.
+
+## 8.6 Adapter is shared live infrastructure — a funding note
+
+The bridge adapter's own native-XRP balance (used to pay `egressGasValue` on every BORROW or
+WITHDRAW return leg) is **shared across every account using it**, not reserved per test. This
+matters for anyone topping it up or reasoning about its balance.
+
+**What happened, in order, confirmed by reading the adapter's own transaction history on-chain:**
+
+1. Adapter balance before this round: `0.15 XRP`.
+2. Topped up with `0.5 XRP` via a plain native transfer from the test account
+   (`037DD6F111D66CA42E4D3738C532F7A623690D228C81E59FD4130B6D0283C6E3`, plus its Add Gas top-up
+   `19136DBCC3434D292595EDA8AE22EA8BA36A512D69317AA887F8CE0B19D2FDE3`).
+3. Topped up with a further `1.5 XRP`, same pattern
+   (`317786578AF10D705AD14A544824FC9D5F51991D4039C280191973B80FB53FD2`, Add Gas
+   `B4B6B4E39C9712C2484100B017391965DBD8E620F13208C82E3A42F620118D5E`).
+4. **Concurrently, independent of anything in this test**, the developer's own proxy
+   (`0xcFCB494284Adb2477F964d040b930E083be32d94`) consumed the shared pool twice:
+   - An LP withdraw (0.5 LP), tx `0x53548a59db387cea576b77202d3f8aae9825bea931e5c18b29085dffb7890ad1` — consumed `0.35 XRP` of egress gas.
+   - The XRP borrow verified in §8.5, tx `0x26fe5b1e3d579a7b4d5c734b140125c7ce7e763bca2a7a7c25b82c1fdcf611e4` — consumed another `0.35 XRP`.
+   - A further LP supply (0.1 LP) by the same proxy, tx `0x840b9c28a7a01c64e39d80f685b95f2556e2f4541044e0b41834dc5de9f366b5`, consumed none (SUPPLY doesn't trigger egress).
+5. **Final balance, verified fresh on-chain:** `1.8 XRP` — `0.15 + 0.5 + 1.5 − 0.35 − 0.35 = 1.8`, confirmed, not a stuck or missing amount.
+
+**Lesson recorded for the dApp:** when reasoning about this adapter's balance, don't assume a
+top-up's full amount remains available — any other account's BORROW or WITHDRAW on this same
+adapter draws from the identical pool. Monitor it live and top up with a margin that accounts for
+concurrent usage, not just your own next action.
+
 ## 9. Open items
 
 - **Recover the first 0.5 LP** (§5.4) — needs Axelar's response and action, not ours.
+- **Monitor the adapter's native-XRP balance in production** (§8.6) — it is a shared pool across
+  every user's BORROW/WITHDRAW, not reserved per account. A low-balance alert is needed before
+  this is user-facing.
 - **Fix the three scripts' hardcoded testnet links** (`submitXrplEnterMarket.ts`,
   `submitXrplWithdraw.ts`, used for both LP and XRP withdraws) — one-line change each, cosmetic only.
 - **Decide the dApp's handling of the trust-line-limit failure mode** (§5.5) before enabling LP

@@ -3,7 +3,7 @@
 End-to-end test of all six lending operations including ENTER_MARKET and EXIT_MARKET
 actions, bridged from XRPL Ledger to the Securd lending protocol on XRPL EVM via Axelar.
 Executed after all Almanax security audit fixes, the ENTER/EXIT_MARKET feature, and the
-removal of auto-enterMarkets from SUPPLY to match Compound V2 design.
+removal of auto-enterMarkets from SUPPLY to match cToken design.
 
 ---
 
@@ -26,7 +26,7 @@ removal of auto-enterMarkets from SUPPLY to match Compound V2 design.
 
 **Flow**: XRPL Ledger → XRPL EVM via Axelar ITS (`interchain_transfer`)
 **Action**: User sends 5 XRP. ITS mints 5 XRP on XRPL EVM to the adapter, which supplies it
-into the sXRP market. Market membership is NOT automatically entered (Compound V2 design).
+into the sXRP market. Market membership is NOT automatically entered (cToken design).
 
 ### Explorer Links
 

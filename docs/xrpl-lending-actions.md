@@ -11,7 +11,7 @@ User (XRPL Ledger)
     → Axelar relayer picks up the transaction
       → XRPLSecurdBridgeAdapter.execute() on XRPL EVM
         → XRPLUserProxy.execute() on behalf of the user
-          → Compound V2 cToken action
+          → cToken action
 ```
 
 The key distinction is **how XRP or tokens are transported**:
@@ -416,7 +416,7 @@ const envelope = {
 }
 ```
 
-**Critical rule:** `repayAmount` must NOT exceed current borrow balance. Compound V2 reverts if
+**Critical rule:** `repayAmount` must NOT exceed current borrow balance. The market reverts if
 you try to over-repay. Always read current borrow balance first:
 
 ```typescript

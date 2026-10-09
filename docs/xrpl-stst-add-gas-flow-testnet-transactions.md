@@ -106,7 +106,7 @@ Axelarscan's `gas_paid` record for the SUPPLY message confirmed pairing:
 
 **Flow**: XRPL Ledger → XRPL EVM via Axelar GMP (`call_contract`)
 **Action**: Enables the sSTST balance as collateral. Required before borrowing, since
-SUPPLY no longer auto-enters the market (Compound V2 design). Pays gas directly in XRP
+SUPPLY no longer auto-enters the market (cToken design). Pays gas directly in XRP
 as part of the single `call_contract` Payment — the Add-Gas pattern does not apply here
 because there is no token amount to skim gas from in the first place.
 

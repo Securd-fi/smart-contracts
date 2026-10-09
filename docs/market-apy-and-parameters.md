@@ -152,7 +152,7 @@ const collateralFactor = Number(ethers.formatEther(collateralFactorMantissa))
 
 ### Liquidation threshold
 
-Compound V2 (and Securd) use the **collateral factor as the liquidation threshold** — there is no
+This lending market design (and Securd) uses the **collateral factor as the liquidation threshold** — there is no
 separate liquidation-threshold value. A position becomes liquidatable as soon as:
 
 ```
@@ -377,7 +377,7 @@ main().catch(console.error)
 | Reserve factor | cToken | `reserveFactorMantissa()` | e.g. 1e17 = 10% |
 | Oracle price (USD) | Oracle | `getUnderlyingPrice(cToken)` | 18-dec, USD per token |
 | Collateral factor | Comptroller | `markets(cToken).collateralFactorMantissa / 1e18` | Also = liquidation threshold |
-| Liquidation threshold | Comptroller | Same as collateral factor | No separate threshold in Compound V2 |
+| Liquidation threshold | Comptroller | Same as collateral factor | No separate threshold in this design |
 | Close factor | Comptroller | `closeFactorMantissa()` | Max % of debt repayable per liquidation |
 | Liquidation bonus | Comptroller | `liquidationIncentiveMantissa() − 1e18` | e.g. 8% bonus |
 | IRM address | cToken | `interestRateModel()` | Both markets share one IRM |

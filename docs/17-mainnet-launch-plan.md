@@ -12,7 +12,7 @@ While auditing the mainnet market set, found and fixed a critical bug:
 `SecurdPriceOracle.getUnderlyingPrice()` returned a flat $-per-whole-token price
 regardless of the underlying's own decimals, but `Comptroller`'s liquidity/liquidation
 math multiplies that price directly against raw cToken/underlying balances, which
-requires the classic Compound V2 `10^(36-underlyingDecimals)` scaling. Proven empirically
+requires the classic cToken-style `10^(36-underlyingDecimals)` scaling. Proven empirically
 (not just by reading the code) against a live local deployment of the real contracts: a
 1000 USDC (6-decimal) deposit at 80% CF registered as **$0.0000000008** of borrowing
 power instead of $800 — undervalued by exactly `10^12`, matching the predicted

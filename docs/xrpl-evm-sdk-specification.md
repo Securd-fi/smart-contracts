@@ -26,11 +26,11 @@ The user experience is:
 
 ### 2.1 What Securd Built
 
-Securd implemented this pattern for Compound V2 specifically:
+Securd implemented this pattern for its cToken-style lending market specifically:
 
 ```
 XRPL Wallet → sign IntentEnvelope → Axelar GMP/ITS → XRPLSecurdBridgeAdapter
-  → validates signature + nonce → XRPLUserProxy → Compound V2 (mint/borrow/repay/redeem)
+  → validates signature + nonce → XRPLUserProxy → the lending market (mint/borrow/repay/redeem)
   → if egress needed → ITS interchainTransfer → XRPL Wallet
 ```
 
@@ -38,10 +38,10 @@ The adapter works. The architecture is sound.
 
 ### 2.2 What Makes It Protocol-Specific Today
 
-Only two things tie the Securd adapter to Compound V2:
+Only two things tie the Securd adapter to its lending market design:
 
-1. **The `IntentEnvelope` struct** encodes `actionType` (SUPPLY=0, BORROW=1…) — a Compound concept
-2. **The adapter's action handlers** contain switch-case logic that knows Compound's function selectors
+1. **The `IntentEnvelope` struct** encodes `actionType` (SUPPLY=0, BORROW=1…) — a cToken-market concept
+2. **The adapter's action handlers** contain switch-case logic that knows the market's function selectors
 
 Everything else is already generic:
 - Intent signature validation (ECDSA)
@@ -100,7 +100,7 @@ All four must be resolved before SDK v1.0.
 │  ├── IntentSigner         signs with XRPL session key (ECDSA)   │
 │  ├── AxelarSubmitter      sends GMP or ITS transaction to XRPL  │
 │  └── protocol/            encodes protocol-specific calldata    │
-│       ├── compound.ts                                           │
+│       ├── market.ts                                              │
 │       ├── uniswap.ts                                            │
 │       └── aave.ts                                               │
 └──────────────────────────────┬──────────────────────────────────┘
@@ -122,7 +122,7 @@ All four must be resolved before SDK v1.0.
 │           │                                                     │
 │           ▼                                                     │
 │  Any EVM Protocol  ← called via proxy, ZERO modifications       │
-│  Compound V2 / Aave / Uniswap V3 / Curve / ERC-20 / …         │
+│  cToken-style markets / Aave / Uniswap V3 / Curve / ERC-20 / …         │
 └─────────────────────────────────────────────────────────────────┘
                                │ Axelar ITS (egress)
                                ▼
@@ -539,7 +539,7 @@ The user does not expose their XRPL master private key. Instead:
 │   │   ├── ProxyAddress.ts        predicts CREATE2 proxy address off-chain
 │   │   └── types.ts               TypeScript interfaces
 │   ├── protocol/
-│   │   ├── compound.ts            Compound V2 calldata helpers
+│   │   ├── market.ts              cToken-style calldata helpers
 │   │   ├── uniswap.ts             Uniswap V3 calldata helpers
 │   │   └── aave.ts                Aave V3 calldata helpers
 │   ├── xrpl/
@@ -829,7 +829,7 @@ export class AxelarSubmitter {
 
 ---
 
-### 6.5 Protocol Module: Compound V2
+### 6.5 Protocol Module: Lending Market
 
 ```typescript
 import { ethers } from "ethers";
@@ -848,7 +848,7 @@ const COMPTROLLER_IFACE = new ethers.Interface([
   "function exitMarket(address cToken) returns (uint256)",
 ]);
 
-export interface CompoundParams {
+export interface MarketParams {
   xrplAddress:       string;
   cTokenAddress:     string;          // e.g. cXRP address on XRPL EVM
   underlyingAddress: string;          // underlying token address
@@ -857,9 +857,9 @@ export interface CompoundParams {
   destinationXrpl?:  string;          // user's XRPL address for egress
 }
 
-export const CompoundV2 = {
+export const LendingMarket = {
   /** Supply underlying → mint cTokens (ITS path) */
-  supply(params: CompoundParams & { amount: bigint }) {
+  supply(params: MarketParams & { amount: bigint }) {
     return IntentBuilder.build({
       xrplAddress: params.xrplAddress,
       target:      params.cTokenAddress,
@@ -871,7 +871,7 @@ export const CompoundV2 = {
   },
 
   /** Borrow underlying → bridge back to XRPL (GMP path) */
-  borrow(params: CompoundParams & { amount: bigint }) {
+  borrow(params: MarketParams & { amount: bigint }) {
     return IntentBuilder.build({
       xrplAddress:        params.xrplAddress,
       target:             params.cTokenAddress,
@@ -884,7 +884,7 @@ export const CompoundV2 = {
   },
 
   /** Repay exact amount (ITS path) */
-  repay(params: CompoundParams & { amount: bigint }) {
+  repay(params: MarketParams & { amount: bigint }) {
     return IntentBuilder.build({
       xrplAddress: params.xrplAddress,
       target:      params.cTokenAddress,
@@ -900,7 +900,7 @@ export const CompoundV2 = {
    * Client must query borrowBalanceCurrent and send at least that amount via ITS.
    * amountIn = actual amount sent; contract passes type(uint256).max to repayBorrow.
    */
-  repayAll(params: CompoundParams & { currentBorrowBalance: bigint }) {
+  repayAll(params: MarketParams & { currentBorrowBalance: bigint }) {
     return IntentBuilder.build({
       xrplAddress: params.xrplAddress,
       target:      params.cTokenAddress,
@@ -913,7 +913,7 @@ export const CompoundV2 = {
   },
 
   /** Withdraw exact amount (GMP path) */
-  withdraw(params: CompoundParams & { amount: bigint }) {
+  withdraw(params: MarketParams & { amount: bigint }) {
     return IntentBuilder.build({
       xrplAddress:        params.xrplAddress,
       target:             params.cTokenAddress,
@@ -930,7 +930,7 @@ export const CompoundV2 = {
    * Uses redeem(cTokenBalance) — adapter reads cToken balance at execution time.
    * amountOut is detected via balance delta.
    */
-  withdrawAll(params: CompoundParams & { minExpectedOut: bigint }) {
+  withdrawAll(params: MarketParams & { minExpectedOut: bigint }) {
     return IntentBuilder.build({
       xrplAddress:        params.xrplAddress,
       target:             params.cTokenAddress,
@@ -945,7 +945,7 @@ export const CompoundV2 = {
   },
 
   /** Enable cToken as collateral (GMP path) */
-  enterMarket(params: CompoundParams) {
+  enterMarket(params: MarketParams) {
     return IntentBuilder.build({
       xrplAddress: params.xrplAddress,
       target:      params.comptroller,
@@ -955,7 +955,7 @@ export const CompoundV2 = {
   },
 
   /** Disable cToken as collateral (GMP path) */
-  exitMarket(params: CompoundParams) {
+  exitMarket(params: MarketParams) {
     return IntentBuilder.build({
       xrplAddress: params.xrplAddress,
       target:      params.comptroller,
@@ -1071,16 +1071,16 @@ export class ProxyAddress {
 
 ## 7. End-to-End Flow Examples
 
-### 7.1 Compound V2 Supply (ITS Path)
+### 7.1 Lending Market Supply (ITS Path)
 
 ```typescript
 import { Client, Wallet } from "xrpl";
-import { IntentSigner, AxelarSubmitter, CompoundV2 } from "@securd/xrpl-evm-sdk";
+import { IntentSigner, AxelarSubmitter, LendingMarket } from "@securd/xrpl-evm-sdk";
 
 const xrplWallet  = Wallet.fromSeed(process.env.XRPL_SEED!);
 const sessionKey  = new IntentSigner(process.env.SESSION_KEY!);
 
-const envelope = CompoundV2.supply({
+const envelope = LendingMarket.supply({
   xrplAddress:       xrplWallet.address,
   cTokenAddress:     "0x6ec503Ad093B8b8B74AD9168Acb3f547C79f0318",  // cXRP
   underlyingAddress: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // native XRP
@@ -1109,7 +1109,7 @@ console.log("XRPL TX:", hash);
 await client.disconnect();
 ```
 
-### 7.2 Compound V2 Repay All (ITS Path with Sentinel)
+### 7.2 Lending Market Repay All (ITS Path with Sentinel)
 
 ```typescript
 // 1. Read current borrow balance from XRPL EVM
@@ -1119,7 +1119,7 @@ const proxyAddress = ProxyAddress.predict({ xrplAddress, factoryAddress, proxyBy
 const borrow       = await cToken.borrowBalanceCurrent(proxyAddress);
 
 // 2. Build intent with REPAY_ALL sentinel
-const envelope = CompoundV2.repayAll({
+const envelope = LendingMarket.repayAll({
   xrplAddress,
   cTokenAddress:     CXRP,
   underlyingAddress: NATIVE_TOKEN,
@@ -1172,7 +1172,7 @@ await AxelarSubmitter.submit({ signedIntent, bridgeMode: "ITS", ... });
 3. Deploy ERC1967Proxy(adapterV1, initCalldata)       # UUPS proxy — this is the real adapter address
 4. Call factory.setController(proxyAddress)           # point factory to UUPS proxy
 5. Call adapter.setIntentSigner(xrplAccount, sessionKey)
-6. Call adapter.setAllowedTarget(compoundCToken, true)
+6. Call adapter.setAllowedTarget(marketCToken, true)
 7. Call adapter.setAllowedTarget(comptroller, true)
 8. Call adapter.setTrustedGmpSource(...)
 9. Call adapter.setTrustedItsSource(...)

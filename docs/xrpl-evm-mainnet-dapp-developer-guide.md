@@ -451,7 +451,7 @@ immutable once sent**; a wrong/insufficient message cannot be corrected, only to
   check the adapter's own XRP balance against `egressGasValue()` before assuming a
   user-side problem.
 - **Repay amount must not exceed the actual outstanding debt** unless using the
-  `repayAll` sentinel (`amount = type(uint256).max`) — Compound's
+  `repayAll` sentinel (`amount = type(uint256).max`) — the market's
   `accountBorrowsPrev - actualRepayAmount` underflows and reverts on overpayment. Don't
   round up "for safety" without also switching to the sentinel.
 - **The intent-signer key env var name is inconsistent across scripts** — check before

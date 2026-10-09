@@ -145,6 +145,11 @@ client-side instead of trusting the server-side `peer` filter.
 - [ ] Don't rely solely on Axelarscan's status for "is this actually done" — cross-check the
       destination ledger when it matters (§4).
 - [ ] Fix the two hardcoded testnet links if you adopt these scripts directly (§7).
+- [ ] **Monitor the adapter's own native-XRP balance and alert on it being low.** It funds
+      `egressGasValue` for every user's BORROW/WITHDRAW on this adapter — a shared pool, not
+      reserved per account. One user's egress can leave it too low for the next one. Confirmed in
+      this test: a top-up's full amount does not stay reserved for the sender; concurrent activity
+      from other accounts draws from the same balance (see the transaction log §8.6).
 
 ## 10. Reference: all addresses used in this test
 

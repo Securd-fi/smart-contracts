@@ -9,7 +9,7 @@ it is a separate governance decision (see "Migration" below).
 
 ## What changed, and why
 
-The deployed timelock's `execute` treats any 32-byte return value as a Compound error code and reverts
+The deployed timelock's `execute` treats any 32-byte return value as a market error code and reverts
 on non-zero. Comptroller pause functions (`_setMintPaused`, `_setBorrowPaused`, `_setTransferPaused`,
 `_setSeizePaused`) return `bool`, the new state. A successful pause returns `true` (1), so the deployed
 timelock reverts it. An unpause returns `false` (0), which the deployed timelock accepts. The ARMY pause

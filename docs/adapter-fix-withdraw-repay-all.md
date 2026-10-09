@@ -8,18 +8,18 @@
 
 ## Background
 
-Compound V2 accrues interest on every block. This creates a timing problem for cross-chain intents:
+The lending market accrues interest on every block. This creates a timing problem for cross-chain intents:
 
 1. A user on XRPL signs an intent encoding a fixed XRP amount.
 2. Axelar relays the message. By the time EVM executes it, interest has accrued and the actual balance differs from the encoded amount.
-3. The adapter passes the literal intent amount to Compound V2. The call succeeds but leaves a dust residual (accrued interest for REPAY, or fractional cTokens for WITHDRAW).
+3. The adapter passes the literal intent amount to the market. The call succeeds but leaves a dust residual (accrued interest for REPAY, or fractional cTokens for WITHDRAW).
 4. The user can never fully exit their position.
 
-Compound V2 already provides the right solution: sentinel values that mean "use everything":
+The market already provides the right solution: sentinel values that mean "use everything":
 
-| Intent | Compound V2 call | Sentinel |
+| Intent | Market call | Sentinel |
 |--------|-----------------|----------|
-| Repay entire debt | `repayBorrow(type(uint256).max)` | Compound caps internally at borrow balance |
+| Repay entire debt | `repayBorrow(type(uint256).max)` | the market caps internally at borrow balance |
 | Withdraw entire supply | `redeem(cTokenBalance)` | Redeems all cTokens at current exchange rate |
 
 The adapter must expose these through a convention the XRPL client can signal. The chosen convention:
@@ -65,7 +65,7 @@ function _repay(address proxy, address market, address underlying, uint256 amoun
 
     if (repayAll) {
         // Read current borrow balance to transfer the exact amount needed from adapter to proxy.
-        // type(uint256).max is passed through to repayBorrow so Compound clears the full debt
+        // type(uint256).max is passed through to repayBorrow so the market clears the full debt
         // including any interest that accrued between intent signing and execution.
         amount = CErc20Interface(market).borrowBalanceCurrent(proxy);
     }
@@ -94,7 +94,7 @@ function _repay(address proxy, address market, address underlying, uint256 amoun
 
 - When `envelope.amount == type(uint256).max`, the adapter calls `borrowBalanceCurrent(proxy)` to get the live borrow balance (this call also accrues interest, so it is exact at execution time).
 - It transfers that exact amount from adapter to proxy, approves the market for that amount.
-- It calls `repayBorrow(type(uint256).max)`: Compound V2 internally caps at the full outstanding balance, clearing it to zero regardless of any further micro-accrual within the same block.
+- It calls `repayBorrow(type(uint256).max)`: the market internally caps at the full outstanding balance, clearing it to zero regardless of any further micro-accrual within the same block.
 - The approval reset at the end clears any unused allowance.
 
 ### Note on `executeWithToken` amount validation
@@ -145,7 +145,7 @@ function _withdraw(address proxy, address market, uint256 amount) internal {
 ### How it works
 
 - When `envelope.amount == 0`, the adapter reads `balanceOf(proxy)` on the cToken contract to get the current cToken balance, then calls `redeem(cTokenBalance)`.
-- Compound V2 converts all cTokens at the current exchange rate, returning 100% of the underlying XRP to the proxy.
+- The market converts all cTokens at the current exchange rate, returning 100% of the underlying XRP to the proxy.
 - The adapter's `_egress()` then bridges that full amount back to XRPL.
 - When `envelope.amount > 0`, behavior is unchanged — `redeemUnderlying` is called for partial withdrawals.
 
@@ -274,7 +274,7 @@ Shipped behavior instead:
   `amount` — untouched, no forgery of a different value.
 - `_repay(proxy, market, underlying, amount, repayAll)` funds the proxy with exactly `amount` (the
   real bridged tokens), approves the market for `amount`, then calls `repayBorrow(type(uint256).max)`
-  when `repayAll` is set. Compound V2 internally caps the pull at the proxy's live borrow balance:
+  when `repayAll` is set. The market internally caps the pull at the proxy's live borrow balance:
   - If the live debt exceeds `amount`, `repayBorrow`'s internal `transferFrom` reverts (insufficient
     balance/allowance) — the whole call reverts safely instead of reaching into unrelated funds.
   - If the live debt is less than `amount` (client sent a buffer), the surplus remains as ordinary

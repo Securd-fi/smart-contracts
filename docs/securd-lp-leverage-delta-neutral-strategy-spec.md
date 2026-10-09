@@ -160,7 +160,7 @@ L_max = 1 / (1 − CF)
 ```
 
 This is the same formula as any recursive lending loop (Aave-style stETH looping,
-Compound-style cToken looping) — the cross-chain mechanics change *how* you get there,
+cToken-style looping) — the cross-chain mechanics change *how* you get there,
 not the ceiling itself.
 
 **Concrete numbers, using Securd's already-defined collateral factors:**
@@ -233,7 +233,7 @@ frees more withdrawable headroom → repeat.
 not assumed.** `CToken.repayBorrowFresh` computes `accountBorrowsNew = accountBorrowsPrev
 - actualRepayAmount` using plain Solidity 0.8 checked arithmetic: if the repaid amount
 exceeds the debt at execution time, this reverts the *entire* transaction, it does not
-refund the excess. Compound V2's usual escape hatch — passing `type(uint256).max` to mean
+refund the excess. the usual escape hatch — passing `type(uint256).max` to mean
 "repay everything" — is unreachable through this bridge: `executeWithInterchainToken`
 requires `envelope.amount` to exactly equal the ITS-delivered token amount, and you
 cannot ITS-deliver `2²⁵⁶−1` tokens. So: size the final `REPAY` intent to slightly
@@ -448,7 +448,7 @@ debt is reduced via plain Solidity 0.8 subtraction
 (`accountBorrowsNew = accountBorrowsPrev - actualRepayAmount`), which reverts on
 underflow if the repaid amount exceeds the debt at the moment of execution — it does
 **not** cap the repayment and refund the excess, contrary to the original (incorrect)
-guidance this spec gave in an earlier draft of §4. Compound V2's normal
+guidance this spec gave in an earlier draft of §4. the normal
 `type(uint256).max` "repay all" sentinel is unreachable through this bridge specifically,
 because `XRPLSecurdBridgeAdapter.executeWithInterchainToken` enforces
 `envelope.amount == amount` against the literal ITS-delivered token quantity — there is

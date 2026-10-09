@@ -125,7 +125,7 @@ These four SUPPLY attempts all failed despite the adapter being in a workable st
 
 ## Full Withdrawal Blocked — Root Cause Analysis
 
-The external user reported being unable to withdraw their entire supplied balance. On-chain verification confirms **full withdrawal is currently blocked** by two separate issues in the adapter, not in Compound V2 itself. Compound V2 natively supports both operations; the adapter does not expose them correctly.
+The external user reported being unable to withdraw their entire supplied balance. On-chain verification confirms **full withdrawal is currently blocked** by two separate issues in the adapter, not in the lending market contracts themselves. The lending market contracts natively support both operations; the adapter does not expose them correctly.
 
 ### Issue 1 — REPAY does not support "repay all" → leaves borrow dust
 
@@ -137,9 +137,9 @@ The user borrowed **4 XRP** at 20:51 and repaid **4 XRP** at 21:05. Between thos
 repayBorrow(envelope.amount)   // always the literal intent amount
 ```
 
-The intent was signed on XRPL for exactly 4 XRP. By the time Axelar relayed it and EVM executed it, the actual debt was **4.000002964 XRP**. The 4 XRP repayment was accepted by Compound V2 but **0.000002964 XRP of accrued interest was left unpaid**.
+The intent was signed on XRPL for exactly 4 XRP. By the time Axelar relayed it and EVM executed it, the actual debt was **4.000002964 XRP**. The 4 XRP repayment was accepted by the lending market but **0.000002964 XRP of accrued interest was left unpaid**.
 
-Compound V2 natively handles this via `repayBorrow(type(uint256).max)` which caps internally at the full outstanding balance. The adapter never uses this sentinel.
+The lending market natively handles this via `repayBorrow(type(uint256).max)` which caps internally at the full outstanding balance. The adapter never uses this sentinel.
 
 **On-chain evidence:**
 ```
@@ -158,7 +158,7 @@ redeemUnderlying(envelope.amount)   // exact underlying XRP amount
 
 The user must encode a fixed XRP amount in the intent on XRPL. The exchange rate increases with every block (interest accrual). By the time the intent is executed on EVM (several seconds to minutes later due to Axelar relaying), the actual underlying balance is slightly higher than the encoded amount. `redeemUnderlying(N)` succeeds but the surplus remains as dust cTokens permanently locked in the proxy.
 
-Compound V2 natively handles full redemption via `redeem(cTokenBalance)` which converts 100% of cTokens at the current exchange rate regardless of timing.
+The lending market natively handles full redemption via `redeem(cTokenBalance)` which converts 100% of cTokens at the current exchange rate regardless of timing.
 
 **On-chain evidence:**
 ```
@@ -169,7 +169,7 @@ Any intent specifying less than `1.00000179661545438 XRP` will leave residual cT
 
 ### Why the user cannot withdraw right now
 
-With the dust borrow still outstanding, Compound V2's collateral check prevents withdrawing collateral that would cause a shortfall:
+With the dust borrow still outstanding, the market's collateral check prevents withdrawing collateral that would cause a shortfall:
 
 ```
 Collateral factor (XRP market) : 75%
@@ -181,12 +181,12 @@ The user can withdraw **~0.999997 XRP** at most — not 100% — until the dust 
 
 ### Where the bug lives
 
-| Issue | Compound V2 | Adapter |
+| Issue | Lending market | Adapter |
 |-------|------------|---------|
 | Repay all (clears interest dust) | ✓ `repayBorrow(type(uint256).max)` | ✗ hardcodes `envelope.amount` |
 | Withdraw all (clears cToken dust) | ✓ `redeem(cTokenBalance)` | ✗ always calls `redeemUnderlying(amount)` |
 
-Both fixes are entirely in the adapter. Compound V2 is not at fault.
+Both fixes are entirely in the adapter. The lending market contracts are not at fault.
 
 See [adapter-fix-withdraw-repay-all.md](adapter-fix-withdraw-repay-all.md) for the full fix specification.
 

@@ -24,7 +24,7 @@ The bridge is built on **Axelar GMP** (General Message Passing) and **Axelar ITS
 | **XRPLSecurdBridgeAdapter** | `0x7AC8Df85448037c6fE1eD5732c6ca71060069237` | Central entry point. Receives relayed messages from Axelar, verifies intent signatures, and dispatches actions to user proxies. |
 | **XRPLUserProxyFactory** | `0xB7f3ECe856063F48BC3bcC7A381aE875841663aA` | Deploys one `XRPLUserProxy` per XRPL account on demand. |
 | **XRPLUserProxy** (per user) | e.g. `0x4409B6F95DbE77398cE9D4B7FA1E146bfE5B5e86` | The user's personal smart contract wallet on XRPL EVM. Holds all positions. Controlled exclusively by the adapter. |
-| **Comptroller** | `0x46d364257112230022E72b086Df85a6b0f8D3F86` | Compound V2 risk engine. |
+| **Comptroller** | `0x46d364257112230022E72b086Df85a6b0f8D3F86` | the lending risk engine. |
 | **sXRP / sSTST cTokens** | see deployment file | The lending markets. |
 
 ---
@@ -123,7 +123,7 @@ function _validateIntentSignature(bytes32 xrplAccount, bytes32 payloadHash, byte
 }
 ```
 
-If valid, the adapter calls the user's proxy to execute the action on the Compound markets.
+If valid, the adapter calls the user's proxy to execute the action on the lending markets.
 
 ---
 
@@ -423,8 +423,8 @@ After this, the user can resubmit their XRPL Payment (nonce is still 0 — unaff
 | Rule | Why |
 |---|---|
 | Always read nonce from adapter before building an intent | Stale nonces cause silent relay failures |
-| `intent.amount` must match net tokens delivered by ITS | For IOU tokens: `amount = totalIOU - gasFee`. Over-repay reverts in Compound |
+| `intent.amount` must match net tokens delivered by ITS | For IOU tokens: `amount = totalIOU - gasFee`. Over-repay reverts in the lending market |
 | `market` and `underlying` in the intent must match the token bridged | Mismatch causes `executeWithToken` to revert |
 | For IOU supply/repay: `gas_fee_amount` memo = fee in token units, not drops | Drops-based gas applies only to native XRP payments |
-| The proxy address (not EVM signer address) holds all Securd positions | The EVM signer is authorization-only, invisible to Compound |
+| The proxy address (not EVM signer address) holds all Securd positions | The EVM signer is authorization-only, invisible to the lending market |
 | `setIntentSigner` must be called by admin before the user's first intent | Without it, every intent from that wallet will fail with `IntentSignerNotConfigured` |

@@ -57,7 +57,7 @@ Payment tx
 | ITS on XRPL EVM | Mints native XRP to the adapter, then calls `executeWithInterchainToken` |
 | `XRPLSecurdBridgeAdapter` | Verifies intent signature, creates user proxy, executes lending action |
 | `XRPLUserProxy` | Per-user EVM wallet (CREATE2 deterministic), holds cToken balances |
-| `CErc20Delegator` (sXRP) | Compound-style lending market accepting native XRP (via ERC20 precompile) |
+| `CErc20Delegator` (sXRP) | cToken-style lending market accepting native XRP (via ERC20 precompile) |
 
 ---
 

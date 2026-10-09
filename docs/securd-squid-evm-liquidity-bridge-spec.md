@@ -23,7 +23,7 @@ just to let an XRPL account safely instruct an EVM contract.
 **None of that applies here.** A user bridging from Ethereum/Arbitrum/etc. already has
 a normal EVM wallet address. XRPL EVM is just another EVM chain to that wallet — once
 funds land there, the user can call Securd's standard `CErc20`/`Comptroller` functions
-directly, the same way they'd interact with any Compound-V2-style market on any other
+directly, the same way they'd interact with any cToken-style market on any other
 EVM chain. The only cross-chain problem to solve is getting the asset from chain A to
 XRPL EVM. That is exactly what Squid does, and nothing about it needs to route through
 `XRPLSecurdBridgeAdapter`, `XRPLUserProxyFactory`, or the `intentSignerOfXrplAccount`
@@ -76,12 +76,12 @@ function mintInternal(uint mintAmount) internal nonReentrant {
 ```
 
 There is no `mintFor(recipient, amount)` variant — this is standard, unmodified
-Compound V2 behavior. If a postHook calls `CErc20(cToken).mint(amount)` directly, the
+standard cToken behavior. If a postHook calls `CErc20(cToken).mint(amount)` directly, the
 **Squid Multicall contract** becomes `msg.sender`, and the freshly minted cTokens are
 credited to *Squid's* contract address, not the user's wallet. Unlike Aave/Radiant-style
 protocols (which expose an explicit `onBehalfOf` parameter, the pattern Squid's own
 example relies on), Securd's `CErc20` has no such parameter — this is a genuine gap
-specific to Compound-V2-shaped markets, not something Squid's documented example
+specific to cToken-shaped markets, not something Squid's documented example
 directly covers.
 
 ## 4. The fix — a 3-call postHook chain, zero contract changes
@@ -133,7 +133,7 @@ single `mintFor` call against the helper.
 ## 5. `ENTER_MARKET` is a required, separate follow-up — by design, not an oversight
 
 Per this repo's own history (`refactor: remove auto-enterMarkets from SUPPLY to match
-Compound V2 design`), Securd deliberately does **not** auto-enroll fresh cTokens as
+cToken design`), Securd deliberately does **not** auto-enroll fresh cTokens as
 collateral on mint — `enterMarkets([cToken])` is a separate call the account itself
 must make. This is structurally incompatible with putting it inside the postHook chain
 in §4: `enterMarkets` operates on `msg.sender`, and by the time the postHook finishes,

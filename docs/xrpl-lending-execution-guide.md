@@ -14,7 +14,7 @@ User (XRPL Ledger)
   └─ Payment to Axelar gateway
        └─ Axelar relayer
             └─ XRPLSecurdBridgeAdapter.execute() on XRPL EVM
-                 └─ XRPLUserProxy → Compound V2 cToken
+                 └─ XRPLUserProxy → cToken
 ```
 
 ### Two transport modes
@@ -322,7 +322,7 @@ const borrowed = await sXRP.borrowBalanceCurrent.staticCall(proxyAddress);
 **What happens:** XRP flows XRPL → XRPL EVM (same as SUPPLY). The adapter calls
 `repayBorrow()` on the sXRP cToken instead of `mint()`.
 
-> **Critical:** Compound V2 reverts if `repayAmount > outstanding borrow`.
+> **Critical:** The market reverts if `repayAmount > outstanding borrow`.
 > Always read `borrowBalanceCurrent` on-chain just before sending and use that
 > exact amount (ceiled to nearest drop to account for interest accrual).
 
@@ -453,8 +453,8 @@ Starting from nonce N:
 | `IntentSignerNotConfigured` | Step 0 not done — no session key registered | Run `setIntentSigner` first |
 | `InvalidNonce(provided, expected)` | Signed intent has wrong nonce | Read `nextNonceByXrplAccount` fresh before signing |
 | `InvalidIntentSignature` | Signed with wrong key or wrong domain | Verify session key matches registered address; verify adapterAddr + chainId in digest |
-| Compound revert on REPAY | `repayAmount > outstanding` | Read `borrowBalanceCurrent` at send time; use exact amount |
-| Compound revert on EXIT_MARKET | Outstanding borrow still active | Repay all borrows first |
+| Market revert on REPAY | `repayAmount > outstanding` | Read `borrowBalanceCurrent` at send time; use exact amount |
+| Market revert on EXIT_MARKET | Outstanding borrow still active | Repay all borrows first |
 | Relay timeout | Axelar relay slow (testnet) | Increase `XRPL_RELAY_TIMEOUT_SEC`; reuse nonce only if relay never reached EVM |
 | `gas_fee_amount` wrong for ITS | Sending 0 gas for ERC-20 IOU tokens | Use `"0"` only for native XRP; for ERC-20 tokens set actual gas drops |
 

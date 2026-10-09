@@ -1135,7 +1135,7 @@ Has the user triggered this from XRPL Ledger?
 | `InvalidDestinationAddress` | `destinationAddress.length == 0` on GMP path | Set `destinationAddress` to UTF-8 bytes of XRPL r-address |
 | `UnsupportedVersion` | `envelope.version != 1` | Always set `version: 1` |
 | `TransferFailed` during egress | Adapter has no XRP balance for `egressGasValue` | Fund adapter; verify `egressGasValue` is set |
-| `SecurdCallFailed(actionType, errorCode)` | cToken `mint`/`borrow`/etc returned non-zero | Check Compound error codes; ensure liquidity and market state |
+| `SecurdCallFailed(actionType, errorCode)` | cToken `mint`/`borrow`/etc returned non-zero | Check the market's numeric error codes; ensure liquidity and market state |
 | `ProxyCallFailed` | Proxy call reverted | Check proxy is deployed; check inner revert via eth_call |
 | `IntentDuplicateIgnored` (event, not error) | Intent already processed | Normal — idempotency working correctly |
 

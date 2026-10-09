@@ -41,7 +41,7 @@
    - 9.2 [Signing Flow](#92-signing-flow)
    - 9.3 [Axelar Relay Status](#93-axelar-relay-status)
 10. [State Management](#10-state-management)
-11. [Compound V2 Business Logic](#11-compound-v2-business-logic)
+11. [Lending Market Business Logic](#11-lending-market-business-logic)
 12. [Error States & Edge Cases](#12-error-states--edge-cases)
 13. [Missing Features & Next Steps](#13-missing-features--next-steps)
 
@@ -49,7 +49,7 @@
 
 ## 1. Product Overview
 
-Securd is a non-custodial lending protocol that lets XRPL Ledger users **supply and borrow assets** without ever touching an EVM wallet. Users sign standard XRPL Payments from their Xumm or Gem wallet; Axelar relays those payments to a Compound V2 fork deployed on XRPL EVM.
+Securd is a non-custodial lending protocol that lets XRPL Ledger users **supply and borrow assets** without ever touching an EVM wallet. Users sign standard XRPL Payments from their Xumm or Gem wallet; Axelar relays those payments to a cToken-style lending market deployed on XRPL EVM.
 
 **Core value proposition:**
 - Native XRPL UX — no MetaMask, no bridge UI, no EVM gas management
@@ -685,7 +685,7 @@ Market data is fetched globally once (in `app/sync.tsx`) and shared across all c
 
 ---
 
-## 11. Compound V2 Business Logic
+## 11. Lending Market Business Logic
 
 ### Borrow capacity
 
