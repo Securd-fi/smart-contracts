@@ -1,5 +1,10 @@
 # Securd — How to Trust the STST Token on XRPL Ledger
 
+**Scope: XRPL Ledger testnet.** STST is a test-only token, and the issuer address used throughout
+this guide (`rNrjh1KGZk2jBR3wPfAQnoidtFFYQKbQn2`) is the testnet Axelar gateway — do not reuse it on
+mainnet. The reserve figures below have also been corrected to the current ledger rule (see the
+note at each one); that rule is the same on testnet and mainnet.
+
 ## What is a Trustline?
 
 On the XRPL Ledger, native XRP is the only asset that any account can hold by default.
@@ -76,8 +81,9 @@ This is the raw transaction you need to submit to the XRPL Ledger:
 | `value` | Maximum amount of STST you agree to hold (trust limit). `1000000000` = 1 billion |
 
 > **Fee:** A TrustSet costs ~12 XRP drops (~0.000012 XRP) in transaction fees plus
-> a **reserve of 2 XRP** that is locked in your account for each trustline you hold.
-> The 2 XRP reserve is returned if you ever delete the trustline.
+> a **reserve of 0.2 XRP** that is locked in your account for each trustline you hold
+> (current ledger rule, `reserve_inc` via `server_state`; this was 2 XRP before an XRPL reserve-reduction amendment).
+> The 0.2 XRP reserve is returned if you ever delete the trustline.
 
 ---
 
@@ -188,7 +194,7 @@ A `balance` of `"0"` and a `limit` of `"1000000000"` confirms the trustline is o
 
 | Error | Cause | Fix |
 |---|---|---|
-| `tecNO_LINE_INSUF_RESERVE` | Account has insufficient XRP reserve | Add at least 2 XRP to your account first |
+| `tecNO_LINE_INSUF_RESERVE` | Account has insufficient XRP reserve | Add at least 0.2 XRP to your account first |
 | `temBAD_LIMIT` | Limit value is negative or malformed | Use a positive number like `"1000000000"` |
 | `tecNO_DST` | Issuer address does not exist on this network | Verify you are on the correct network (testnet vs mainnet) |
 | Payment fails with `tecPATH_DRY` | Trustline not open yet | Run TrustSet first, then retry the payment |
@@ -200,7 +206,7 @@ A `balance` of `"0"` and a `limit` of `"1000000000"` confirms the trustline is o
 | Step | Action |
 |---|---|
 | 1 | Get your XRPL wallet address and seed |
-| 2 | Make sure your account holds at least **3 XRP** (2 XRP reserve + fees) |
+| 2 | Make sure your account holds at least **1.2 XRP** (0.2 XRP trustline reserve + the 1 XRP base account reserve, + fees) |
 | 3 | Submit a **TrustSet** transaction with currency `5354535400000000000000000000000000000000` and issuer `rNrjh1KGZk2jBR3wPfAQnoidtFFYQKbQn2` |
 | 4 | Verify with `account_lines` — balance should be `"0"`, limit `"1000000000"` |
 | 5 | Your wallet can now receive STST from the Securd lending pool and any other source |

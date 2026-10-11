@@ -36,7 +36,7 @@
 | **Reserve Factor** | Percentage of borrower interest redirected to the protocol insurance reserve instead of suppliers. At 20%, if borrowers pay 10% APY, suppliers receive 8% APY and 2% accrues to the reserve. |
 | **Supply Cap** | Maximum total amount of an asset that can be deposited into the market. Limits protocol exposure to any single asset. |
 | **Borrow Cap** | Maximum total amount that can be borrowed from the market. Set at 80% of supply cap to guarantee a minimum 20% liquidity buffer for supplier withdrawals at all times. |
-| **Liquidation Incentive (LI)** | Bonus paid to liquidators expressed as a percentage of the debt repaid. A 10% LI means a liquidator repaying $100 of debt receives $110 worth of collateral. |
+| **Liquidation Incentive (LI)** | Bonus paid to liquidators expressed as a percentage of the debt repaid. A 10% LI means a liquidator repaying $100 of debt receives $110 worth of collateral. **`liquidationIncentiveMantissa` is a single global value in `ComptrollerStorage`, not per-market — every per-asset LI value in the tables below is a design target, not something that can be set independently on-chain.** The deployed value is **10%** (confirmed on-chain: `1100000000000000000`). Any asset below listing a different LI is not yet enforceable as written. |
 | **IR — Base Rate** | Minimum annual borrow rate regardless of utilization. |
 | **IR — Slope 1** | Rate of interest increase per unit of utilization below the kink (normal regime). |
 | **IR — Slope 2** | Rate of interest increase per unit of utilization above the kink (stress regime). Intentionally steep to force repayment and attract new supply when the market approaches full utilization. |
@@ -351,7 +351,7 @@ LP_price_USD = 2 × sqrt(XRP_reserve × P_xrp × RLUSD_reserve × 1.00) / LP_sup
 | **USDC reserve** | 343,875 USDC (approx.) |
 | **TVL** | $956K |
 | **7d volume** | $129K |
-| **Pool fee** | 0.202% |
+| **Pool fee** | 0.097% (9.7 bps) — live value, checked 2026-10-11; AMM fees can be changed by LP vote |
 | **LP annual yield** | 2.7% |
 
 **Role:** Collateral only — cannot be borrowed, no interest earned on deposit
@@ -630,7 +630,7 @@ In this protocol's liquidation model, partial liquidation only improves the borr
 
 The protocol must maintain a **bad debt insurance reserve of at least 3% of total protocol TVL**, accumulated continuously from reserve factor income.
 
-All critical parameter changes (CF, supply caps, liquidation incentive) are subject to a **48-hour governance timelock**.
+**Deployed scope of the 48-hour governance timelock, verified against `SecurdCollateralFactorTimelock.sol`:** the 48-hour `MIN_DELAY` is enforced only on calldata whose selector matches `_setCollateralFactor` — it does not apply to supply caps, borrow caps, or liquidation incentive. There is also no on-chain supply-cap mechanism at all (only borrow caps exist, via `_setMarketBorrowCaps`). Only the collateral factor change described in this document is actually subject to the 48-hour delay today.
 
 ---
 

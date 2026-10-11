@@ -50,7 +50,7 @@ Both queried live against XRPL Ledger mainnet (`amm_info`) while writing this do
 - asset0 = XRP (native)
 - asset1 = USDC, currency `5553444300000000000000000000000000000000`, issuer `rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE` (this is "Circle USDC" — see the important note in §2.4 about a *second*, different USDC token; for **pricing** purposes this is fine, since you just need a reliable USD reference, but never reuse this issuer for bridging)
 - LP currency: `03B20F3A7D26D33C6DA3503E5CCE3E67B102D4D2`, issuer = the pool account itself
-- Trading fee: 202 bps (2.02%)
+- Trading fee: 9.7 bps (0.097%) — checked live 2026-10-11, via amm_info; the figure is in units of 0.001%, so do not read the raw AMM TradingFee value as basis points directly
 - XRPL EVM wrapped LP token (the `underlying` you price): `0xbAF2e0ef5D0dD17646F85129892E40fAA8065f53` (15 decimals), cToken `sXRPUSDCLP` = `0xBC08F8E0cF29874a9C9C660cf5F045bD65F2270F`
 
 **XRP/ARMY pool**

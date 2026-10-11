@@ -284,12 +284,16 @@ Shipped behavior instead:
   amount (optionally with a small buffer, matching the dapp design spec's existing +0.5% max-repay
   buffer) via ITS, with `amount = type(uint256).max` in the signed envelope.
 
-### Fix 2 (`_withdraw`) — same shape as proposed, with the sentinel change noted above
+### Fix 2 (`_withdraw`) — same shape as proposed, with the sentinel corrected to `0`
 
-- `envelope.amount == type(uint256).max` → `_withdraw` reads the proxy's cToken balance and calls
+This section originally proposed `type(uint256).max` as the withdraw-all sentinel. That was
+superseded by the 2026-07-24 decision above (`envelope.amount == 0`) and never reconciled here —
+fixed now to match what is actually deployed:
+
+- `envelope.amount == 0` → `_withdraw` reads the proxy's cToken balance and calls
   `redeem(cTokenBalance)`, returning the actual redeemed underlying (measured via before/after
   balance diff on the proxy, which is also robust to fee-on-transfer underlying tokens).
-  `envelope.amount != type(uint256).max` → unchanged `redeemUnderlying(amount)` path.
+  `envelope.amount != 0` → unchanged `redeemUnderlying(amount)` path.
 - The WITHDRAW dispatch site in `execute()` patches `envelope.amount` with the actual redeemed
   amount before `_egress` runs, so the bridged-out amount (and the `IntentExecuted` event) reflect
   the real redemption, not `0` or `type(uint256).max`.
@@ -309,7 +313,7 @@ not lost or accessible to anyone else). A follow-up could add an owner- or user-
 - `supports repay-all via the type(uint256).max sentinel, clearing accrued-interest dust`
 - `rejects repay-all when the bridged token amount cannot cover the live debt`
 - `still enforces the exact amount match for ordinary (non-sentinel) repay`
-- `supports withdraw-all via the type(uint256).max sentinel, redeeming the full cToken balance`
+- `supports withdraw-all via the amount == 0 sentinel, redeeming the full cToken balance`
 
 `contracts/mocks/MockCErc20Market.sol` was extended with `borrowBalanceOf`/`setBorrowBalance`,
 `balanceOf`/`setCTokenBalance`, `setExchangeRateMantissa`, and a `redeem()` implementation, plus a

@@ -70,7 +70,7 @@ flagged explicitly in the bot's own source comments; see §18 of the design doc)
 | XRPL AMM pool account | `rM7cHVPfhe9yxQNk2kDNBEQqoQmMcQGPWE` | `rnsRq5ahgbFeRiAgBVvFTafyAgiS9x9Ztn` |
 | Live reserves (checked just now) | 10,317.797 XRP / 15,516.02 USDC | 236,444.17 XRP / 42,682,296.99 ARMY |
 | Live LP supply | 11,560,011.33 | 3,157,193,841.21 |
-| Trading fee | 202 bps | 0 bps |
+| Trading fee | 9.7 bps (0.097%) | 0 bps |
 | `oracleType` on-chain | `3` (FALLBACK) — already set | `3` (FALLBACK) — already set |
 | `fallbackMaxDelay` on-chain | `900` seconds — already set | `900` seconds — already set |
 | Current posted price | **0 / never posted** (`fallbackPriceOf` returns `priceMantissa: 0, updatedAt: 0`) | same, **0 / never posted** |

@@ -206,10 +206,16 @@ Memos:
    f. Axelar relays to XRPL EVM (~30–60s)
    g. Adapter verifies signature, calls proxyFactory.getOrCreateProxy()
       → proxy auto-deployed on first relay (user pays nothing extra)
-   h. Proxy calls comptroller.enterMarkets() + cToken.mint()
-   i. User's proxy now holds sXRP cTokens
+   h. Proxy calls cToken.mint() only — `_supply()` does not call `comptroller.enterMarkets()`
+   i. User's proxy now holds sXRP cTokens, but they do not yet count as collateral
 
-4. ENTER_MARKET, BORROW, REPAY, EXIT_MARKET, WITHDRAW
+4. ENTER_MARKET — a separate, required step before the supplied cTokens count as collateral
+   a. Dapp sends a GMP ENTER_MARKET intent for the same market
+   b. Adapter calls `comptroller.enterMarkets([market])` on the proxy's behalf
+   c. Only after this does `checkMembership(proxy, market)` return `true` and the position count
+      toward borrowing power
+
+5. BORROW, REPAY, EXIT_MARKET, WITHDRAW
    Follow the same pattern with their respective actionTypes and amounts.
 ```
 

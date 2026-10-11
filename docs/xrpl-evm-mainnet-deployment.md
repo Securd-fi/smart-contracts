@@ -235,7 +235,7 @@ Ledger's native DEX/AMM using the test account's own (small) XRP balance.
 | Cross-currency `Payment` (self-payment, XRP→USDC via native DEX/AMM, `SendMax`=1,000,000 drops hard cap, `Amount`=1.25 USDC) | `2D26960910FE263397F927FF86B972A248E42576C48DFE0F997F87D0AD0E205E` | `tesSUCCESS`, `delivered_amount`=1.25 USDC exactly |
 
 Pool used: native XRP/USDC AMM on XRPL Ledger (same USDC issuer), reserves at the time
-~234,572 XRP / ~306,027 USDC, trading fee 202 bps (2.02%) — checked live via `amm_info`
+~234,572 XRP / ~306,027 USDC at the time; trading fee is 9.7 bps (0.097%) as of 2026-10-11 via `amm_info` — the raw TradingFee field is in units of 0.001%, not basis points, so a raw value of 202 means 0.202%, not 2.02%
 before sizing the trade, not assumed.
 
 **Result (independently verified via `account_info`/`account_lines`):** XRP balance

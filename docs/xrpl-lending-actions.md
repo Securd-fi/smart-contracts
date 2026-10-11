@@ -21,6 +21,14 @@ The key distinction is **how XRP or tokens are transported**:
 | **ITS interchain_transfer** | Actions that move tokens inbound (SUPPLY, REPAY) | `interchain_transfer` |
 | **GMP call_contract** | Actions that are instruction-only or move tokens outbound (ENTER_MARKET, EXIT_MARKET, BORROW, WITHDRAW) | `call_contract` |
 
+> **Gas constants below are stale testnet-era defaults, not mainnet-proven values.** This doc's
+> examples use `gas_fee_amount`/GMP gas values like `2,000,000` or `3,000,000` drops (2–3 XRP).
+> Real mainnet transactions (LP supply, USDC/XRP borrow and repay, enter-market, withdraw — see
+> `docs/lp-xrp-usdc-transaction-log.md` for every hash) consistently needed only **30,000 drops**
+> as a one-off Add Gas top-up, sent *after* an initial `gas_fee_amount = 0` submission — not a
+> large amount paid upfront. Don't size a mainnet gas budget from the numbers in this doc; check
+> the transaction log instead, or size live via Axelar's own fee estimator.
+
 ---
 
 ## Part 1 — One-Time User Registration (Option B)
